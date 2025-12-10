@@ -37,15 +37,15 @@ router.get('/group/:groupId/debug', authenticate, async (req: AuthRequest, res) 
         id: e._id,
         amount: e.amount,
         description: e.description,
-        payer: e.userId.name,
-        payerId: e.userId._id
+        payer: (e.userId as any).name,
+        payerId: (e.userId as any)._id
       })),
       splits: splits.map(s => ({
         id: s._id,
         expenseId: s.expenseId,
         amount: s.amount,
-        user: s.userId.name,
-        userId: s.userId._id
+        user: (s.userId as any).name,
+        userId: (s.userId as any)._id
       }))
     });
   } catch (error) {
@@ -165,8 +165,8 @@ router.get('/group/:groupId/balances', authenticate, async (req: AuthRequest, re
       
       return {
         userId,
-        userName: member?.userId.name || 'Unknown User',
-        userEmail: member?.userId.email || 'No email',
+        userName: (member?.userId as any)?.name || 'Unknown User',
+        userEmail: (member?.userId as any)?.email || 'No email',
         balance: roundedBalance,
         status,
         paidSettlements: userPaidSettlements.length // For debugging
@@ -274,7 +274,7 @@ router.post('/:id/upi-link', authenticate, async (req: AuthRequest, res) => {
     // Generate UPI payment link
     // Format: upi://pay?pa=UPI_ID&pn=NAME&am=AMOUNT&cu=INR&tn=NOTE
     const upiId = payee.upiId;
-    const payeeName = settlement.toUserId.name;
+    const payeeName = (settlement.toUserId as any).name;
     const amount = settlement.amount;
     const note = `Settlement for group expense`;
 

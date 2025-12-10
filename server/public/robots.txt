@@ -1,0 +1,14 @@
+# Allow all crawlers
+User-agent: *
+Allow: /
+
+# Disallow private pages
+Disallow: /api/
+Disallow: /profile
+Disallow: /expenses
+Disallow: /income
+Disallow: /budget
+Disallow: /groups
+
+# Sitemap
+Sitemap: https://yourapp.com/sitemap.xml

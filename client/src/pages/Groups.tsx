@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
-import { format } from 'date-fns';
+// import { format } from 'date-fns';
 
 interface Group {
   _id: string;
@@ -25,17 +25,8 @@ interface Group {
 const Groups = () => {
   const navigate = useNavigate();
   const [groups, setGroups] = useState<Group[]>([]);
-  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [showMemberForm, setShowMemberForm] = useState<string | null>(null);
-  const [showExpenseForm, setShowExpenseForm] = useState<string | null>(null);
   const [formData, setFormData] = useState({ name: '', description: '' });
-  const [memberEmail, setMemberEmail] = useState('');
-  const [expenseData, setExpenseData] = useState({
-    amount: '',
-    description: '',
-    category: 'Food'
-  });
 
   useEffect(() => {
     fetchGroups();
@@ -54,44 +45,44 @@ const Groups = () => {
     fetchGroups();
   };
 
-  const handleAddMember = async (groupId: string) => {
-    try {
-      await axios.post(`/api/groups/${groupId}/members`, { email: memberEmail });
-      setShowMemberForm(null);
-      setMemberEmail('');
-      fetchGroups();
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Failed to add member');
-    }
-  };
+  // const handleAddMember = async (groupId: string) => {
+  //   try {
+  //     await axios.post(`/api/groups/${groupId}/members`, { email: memberEmail });
+  //     setShowMemberForm(null);
+  //     setMemberEmail('');
+  //     fetchGroups();
+  //   } catch (error: any) {
+  //     alert(error.response?.data?.error || 'Failed to add member');
+  //   }
+  // };
 
-  const handleAddGroupExpense = async (groupId: string) => {
-    try {
-      const group = groups.find(g => g._id === groupId);
-      if (!group) return;
+  // const handleAddGroupExpense = async (groupId: string) => {
+  //   try {
+  //     const group = groups.find(g => g._id === groupId);
+  //     if (!group) return;
 
-      const amount = parseFloat(expenseData.amount);
-      const splitAmount = amount / group.members.length;
+  //     const amount = parseFloat(expenseData.amount);
+  //     const splitAmount = amount / group.members.length;
 
-      const splits = group.members.map(member => ({
-        userId: member.userId._id,
-        amount: splitAmount
-      }));
+  //     const splits = group.members.map(member => ({
+  //       userId: member.userId._id,
+  //       amount: splitAmount
+  //     }));
 
-      await axios.post(`/api/groups/${groupId}/expenses`, {
-        amount: expenseData.amount,
-        description: expenseData.description,
-        category: expenseData.category,
-        splits
-      });
+  //     await axios.post(`/api/groups/${groupId}/expenses`, {
+  //       amount: expenseData.amount,
+  //       description: expenseData.description,
+  //       category: expenseData.category,
+  //       splits
+  //     });
 
-      setShowExpenseForm(null);
-      setExpenseData({ amount: '', description: '', category: 'Food' });
-      fetchGroups();
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Failed to add expense');
-    }
-  };
+  //     setShowExpenseForm(null);
+  //     setExpenseData({ amount: '', description: '', category: 'Food' });
+  //     fetchGroups();
+  //   } catch (error: any) {
+  //     alert(error.response?.data?.error || 'Failed to add expense');
+  //   }
+  // };
 
   const calculateGroupTotal = (expenses: any[]) => {
     return expenses.reduce((sum, exp) => sum + exp.amount, 0);
@@ -102,7 +93,7 @@ const Groups = () => {
     return group.members.length > 0 ? total / group.members.length : 0;
   };
 
-  const getSelectedGroup = () => groups.find(g => g._id === selectedGroup);
+  // const getSelectedGroup = () => groups.find(g => g._id === selectedGroup);
 
   return (
     <div className="min-h-screen">

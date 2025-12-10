@@ -21,7 +21,7 @@ import { TABS } from '../constants/group.constants';
 const GroupDetails: React.FC = () => {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { } = useAuth();
   const { currentUserId } = useSecurity();
   
   // Custom hooks

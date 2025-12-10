@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 import BudgetAlert from '../components/BudgetAlert';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, Line } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, Line } from 'recharts';
 
 interface Analytics {
   totalIncome: number;
@@ -282,7 +282,7 @@ const Dashboard = () => {
                           outerRadius={100}
                           label={(entry) => `${entry.name}: $${entry.value.toFixed(0)}`}
                         >
-                          {categoryData.map((entry, index) => (
+                          {categoryData.map((_, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                           ))}
                         </Pie>

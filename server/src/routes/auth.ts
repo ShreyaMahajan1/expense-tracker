@@ -19,21 +19,53 @@ const loginSchema = z.object({
 
 router.post('/register', async (req, res) => {
   try {
+    console.log('Registration attempt:', { body: req.body });
+    
+    // Validate input
     const { email, password, name } = registerSchema.parse(req.body);
+    console.log('Validation passed for:', email);
 
+    // Check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
+      console.log('User already exists:', email);
       return res.status(400).json({ error: 'Email already registered' });
     }
 
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await User.create({ email, password: hashedPassword, name });
+    console.log('Password hashed successfully');
 
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET!, { expiresIn: '7d' });
+    // Create user
+    const user = await User.create({ email, password: hashedPassword, name });
+    console.log('User created successfully:', user._id);
+
+    // Generate token
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET not found in environment variables');
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    console.log('Token generated successfully');
 
     res.json({ token, user: { id: user._id, email: user.email, name: user.name } });
   } catch (error) {
-    res.status(400).json({ error: 'Invalid input' });
+    console.error('Registration error:', error);
+    
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        error: 'Invalid input', 
+        details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
+      });
+    }
+    
+    if ((error as any).name === 'MongoError' || (error as any).name === 'MongooseError') {
+      console.error('Database error:', (error as any).message);
+      return res.status(500).json({ error: 'Database connection error' });
+    }
+    
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

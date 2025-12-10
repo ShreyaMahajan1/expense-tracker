@@ -16,8 +16,8 @@ interface UsePaymentReturn {
   paymentModal: PaymentModalState;
   paymentMethod: string;
   transactionId: string;
-  setPaymentMethod: (method: string) => void;
-  setTransactionId: (id: string) => void;
+  setPaymentMethod: React.Dispatch<React.SetStateAction<string>>;
+  setTransactionId: React.Dispatch<React.SetStateAction<string>>;
   openPaymentModal: (balance: Balance, balances: Balance[], groupId: string) => Promise<void>;
   closePaymentModal: () => void;
   markAsPaid: (settlements: any[]) => Promise<boolean>;
@@ -36,7 +36,7 @@ export const usePayment = (
     payeeUpiId: '',
   });
   
-  const [paymentMethod, setPaymentMethod] = useState(PAYMENT_METHODS.UPI);
+  const [paymentMethod, setPaymentMethod] = useState<string>(PAYMENT_METHODS.UPI);
   const [transactionId, setTransactionId] = useState('');
 
   const openPaymentModal = useCallback(async (

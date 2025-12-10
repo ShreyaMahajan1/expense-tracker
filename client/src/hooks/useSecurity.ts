@@ -69,7 +69,7 @@ export const useSecurity = () => {
 
   // Check rate limits
   const checkRateLimit = useCallback((action: 'payment' | 'general'): boolean => {
-    const userId = user?.id || user?._id || 'anonymous';
+    const userId = (user as any)?.id || (user as any)?._id || 'anonymous';
     const key = `${userId}-${action}`;
 
     let canProceed = false;
@@ -96,7 +96,7 @@ export const useSecurity = () => {
 
   // Check user authorization
   const checkAuthorization = useCallback((resourceUserId: string, action: string): boolean => {
-    const currentUserId = user?.id || user?._id;
+    const currentUserId = (user as any)?.id || (user as any)?._id;
     
     if (!currentUserId) {
       addSecurityError({
@@ -192,14 +192,14 @@ export const useSecurity = () => {
 
   // Validate settlement creation
   const validateSettlementCreation = useCallback((
-    groupId: string,
+    _groupId: string,
     toUserId: string,
     amount: number
   ): boolean => {
     clearSecurityErrors();
 
     // Check if user is trying to pay themselves
-    const currentUserId = user?.id || user?._id;
+    const currentUserId = (user as any)?.id || (user as any)?._id;
     if (currentUserId === toUserId) {
       addSecurityError({
         message: 'You cannot create a settlement to yourself',
@@ -236,7 +236,7 @@ export const useSecurity = () => {
 
   // Check if current user can perform action on balance
   const canPerformBalanceAction = useCallback((balance: any, action: string): boolean => {
-    const currentUserId = user?.id || user?._id;
+    const currentUserId = (user as any)?.id || (user as any)?._id;
     
     if (!currentUserId) {
       return false;
@@ -266,6 +266,6 @@ export const useSecurity = () => {
     validateSettlementCreation,
     sanitizeInput,
     canPerformBalanceAction,
-    currentUserId: user?.id || user?._id
+    currentUserId: (user as any)?.id || (user as any)?._id
   };
 };
