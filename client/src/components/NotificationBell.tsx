@@ -55,7 +55,7 @@ const NotificationBell = () => {
   }, [showDropdown]);
 
   const setupSocket = () => {
-    const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000');
+    const newSocket = io(import.meta.env.CLIENT_URL || 'http://localhost:5000');
     
     newSocket.on('connect', () => {
       if (user) {

@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Set the base URL for all axios requests
-axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+axios.defaults.baseURL = import.meta.env.CLIENT_URL || 'http://localhost:5000';
 
 // Add request interceptor to include auth token
 axios.interceptors.request.use(
