@@ -1,8 +1,16 @@
 import { Router } from 'express';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { 
+  validateExpense, 
+  validateObjectId, 
+  validateFileUpload,
+  handleValidationErrors 
+} from '../middleware/validation';
+import { checkExpenseOwnership } from '../middleware/authorization';
 import multer from 'multer';
 import Expense from '../models/Expense';
 import ExpenseSplit from '../models/ExpenseSplit';
+import { notificationService } from './notifications';
 
 const router = Router();
 
@@ -13,7 +21,21 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage });
+const upload = multer({ 
+  storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+    files: 1
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only JPEG, PNG, and WebP images are allowed.'));
+    }
+  }
+});
 
 router.get('/', authenticate, async (req: AuthRequest, res) => {
   try {
@@ -39,9 +61,10 @@ router.post('/', authenticate, upload.single('receipt'), async (req: AuthRequest
   try {
     const { amount, description, category, date, paymentMethod, isRecurring, recurringDay, notes } = req.body;
     const receiptUrl = req.file ? `/uploads/${req.file.filename}` : undefined;
+    const expenseAmount = parseFloat(amount);
 
     const expense = await Expense.create({
-      amount: parseFloat(amount),
+      amount: expenseAmount,
       description,
       category,
       date: date ? new Date(date) : new Date(),
@@ -52,6 +75,11 @@ router.post('/', authenticate, upload.single('receipt'), async (req: AuthRequest
       notes,
       userId: req.userId
     });
+
+    // Check budget and send notification if needed
+    if (notificationService && category) {
+      await notificationService.checkBudgetAndNotify(req.userId!, category, expenseAmount);
+    }
 
     res.json(expense);
   } catch (error) {

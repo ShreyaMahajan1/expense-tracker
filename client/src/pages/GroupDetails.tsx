@@ -1,170 +1,202 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import Navbar from '../components/Navbar';
 import { format } from 'date-fns';
-import { QRCodeSVG } from 'qrcode.react';
+import axios from '../config/axios';
 
-interface Balance {
-  userId: string;
-  userName: string;
-  userEmail: string;
-  balance: number;
-  status: 'owed' | 'owes' | 'settled';
-}
+// Components
+import Navbar from '../components/Navbar';
+import GroupHeader from '../components/GroupHeader';
+import PaymentModal from '../components/PaymentModal';
 
-interface Settlement {
-  _id: string;
-  fromUserId: { _id: string; name: string; email: string };
-  toUserId: { _id: string; name: string; email: string };
-  amount: number;
-  status: 'pending' | 'paid' | 'cancelled';
-  paymentMethod?: string;
-  transactionId?: string;
-  paidAt?: Date;
-  createdAt: string;
-}
+// Hooks
+import { useAuth } from '../context/AuthContext';
+import { useSecurity } from '../hooks/useSecurity';
+import { useGroupData } from '../hooks/useGroupData';
+import { usePayment } from '../hooks/usePayment';
 
-interface Group {
-  _id: string;
-  name: string;
-  description?: string;
-  members: Array<{
-    userId: { _id: string; name: string; email: string; upiId?: string; phoneNumber?: string };
-    role: string;
-  }>;
-  expenses: Array<{
-    _id: string;
-    amount: number;
-    description: string;
-    category: string;
-    date: string;
-    userId: { _id: string; name: string };
-  }>;
-}
+// Types and Constants
+import { TabType } from '../types/group.types';
+import { TABS } from '../constants/group.constants';
 
-const GroupDetails = () => {
-  const { groupId } = useParams();
+const GroupDetails: React.FC = () => {
+  const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
-  const [group, setGroup] = useState<Group | null>(null);
-  const [balances, setBalances] = useState<Balance[]>([]);
-  const [settlements, setSettlements] = useState<Settlement[]>([]);
-  const [activeTab, setActiveTab] = useState<'expenses' | 'balances' | 'settlements'>('expenses');
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [selectedBalance, setSelectedBalance] = useState<Balance | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState('UPI');
-  const [transactionId, setTransactionId] = useState('');
-  const [upiLink, setUpiLink] = useState('');
-  const [payeeUpiId, setPayeeUpiId] = useState('');
-  const [payeeName, setPayeeName] = useState('');
-  const [paymentAmount, setPaymentAmount] = useState(0);
-  const [paymentProof, setPaymentProof] = useState<File | null>(null);
+  const { user } = useAuth();
+  const { currentUserId } = useSecurity();
+  
+  // Custom hooks
+  const { group, balances, settlements, loading, error, fetchGroupData } = useGroupData();
+  
+  const getCurrentUserId = (): string => currentUserId || '';
+  
+  const { 
+    paymentModal, 
+    paymentMethod, 
+    transactionId, 
+    setPaymentMethod, 
+    setTransactionId, 
+    openPaymentModal, 
+    closePaymentModal, 
+    markAsPaid 
+  } = usePayment(getCurrentUserId, () => fetchGroupData(groupId!));
 
+  const [activeTab, setActiveTab] = React.useState<TabType>(TABS.EXPENSES);
+  const [showAddMemberForm, setShowAddMemberForm] = React.useState(false);
+  const [showAddExpenseForm, setShowAddExpenseForm] = React.useState(false);
+  const [memberEmail, setMemberEmail] = React.useState('');
+  const [expenseData, setExpenseData] = React.useState({
+    amount: '',
+    description: '',
+    category: 'Food'
+  });
+
+  // Memoized calculations
+  const { totalSpent, perPersonShare } = useMemo(() => {
+    if (!group) return { totalSpent: 0, perPersonShare: 0 };
+    
+    const total = group.expenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const perPerson = group.members.length > 0 ? total / group.members.length : 0;
+    
+    return { totalSpent: total, perPersonShare: perPerson };
+  }, [group]);
+
+  // Effects
   useEffect(() => {
     if (groupId) {
-      fetchGroupData();
+      fetchGroupData(groupId);
     }
-  }, [groupId]);
+  }, [groupId, fetchGroupData]);
 
-  const fetchGroupData = async () => {
-    try {
-      const [groupRes, balancesRes, settlementsRes] = await Promise.all([
-        axios.get(`/api/groups`),
-        axios.get(`/api/settlements/group/${groupId}/balances`),
-        axios.get(`/api/settlements/group/${groupId}`)
-      ]);
-
-      const currentGroup = groupRes.data.find((g: Group) => g._id === groupId);
-      setGroup(currentGroup);
-      setBalances(balancesRes.data);
-      setSettlements(settlementsRes.data);
-    } catch (error) {
-      console.error('Failed to fetch group data:', error);
-    }
-  };
-
-  const handlePayNow = async (balance: Balance) => {
-    setSelectedBalance(balance);
-    
-    // Find who to pay (person with positive balance)
-    const payee = balances.find(b => b.balance > 0 && b.userId !== balance.userId);
-    if (!payee) {
-      alert('No one to pay in this group');
-      return;
-    }
-
-    try {
-      // Create settlement request
-      const settlementRes = await axios.post('/api/settlements/request', {
-        groupId,
-        toUserId: payee.userId,
-        amount: Math.abs(balance.balance)
-      });
-
-      setPayeeName(payee.userName);
-      setPaymentAmount(Math.abs(balance.balance));
-      
-      // Generate UPI link for direct payment
-      const upiRes = await axios.post(`/api/settlements/${settlementRes.data._id}/upi-link`);
-      setUpiLink(upiRes.data.upiLink);
-      setPayeeUpiId(upiRes.data.payeeUpiId);
-      
-      // Show payment modal
-      setShowPaymentModal(true);
-    } catch (error: any) {
-      console.error('Failed to create payment:', error);
-      const errorMsg = error.response?.data?.error || 'Failed to create payment request';
-      alert(errorMsg);
-    }
+  // Event handlers
+  const handlePayNow = (balance: any) => {
+    if (!groupId) return;
+    openPaymentModal(balance, balances, groupId);
   };
 
   const handleMarkAsPaid = async () => {
-    if (!selectedBalance) return;
-
-    if (!transactionId.trim()) {
-      alert('Please enter the transaction ID from your UPI app');
-      return;
-    }
-
+    console.log('handleMarkAsPaid called');
+    console.log('paymentModal:', paymentModal);
+    console.log('settlements:', settlements);
+    console.log('transactionId:', transactionId);
+    
     try {
-      const pendingSettlement = settlements.find(
-        s => s.fromUserId._id === selectedBalance.userId && s.status === 'pending'
-      );
-
-      if (pendingSettlement) {
-        await axios.post(`/api/settlements/${pendingSettlement._id}/pay`, {
-          paymentMethod,
-          transactionId
-        });
-
-        setShowPaymentModal(false);
-        setTransactionId('');
-        setPaymentProof(null);
-        fetchGroupData();
-        alert('✅ Payment recorded successfully! The payee can verify the transaction ID.');
-      }
+      const result = await markAsPaid(settlements);
+      console.log('markAsPaid result:', result);
     } catch (error) {
-      console.error('Failed to mark as paid:', error);
-      alert('Failed to mark payment as paid');
+      console.error('Error in handleMarkAsPaid:', error);
     }
   };
 
-  if (!group) {
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+  };
+
+  const handleBackToGroups = () => {
+    navigate('/groups');
+  };
+
+  // Check if there's a paid settlement for this balance
+  const hasCompletedPayment = (balance: any) => {
+    // If the balance status is already 'settled', no need to show pay button
+    if (balance.status === 'settled') {
+      // console.log(`Balance for ${balance.userName} is already settled`);
+      return true;
+    }
+    
+    // Check if there are paid settlements from this user
+    const userPaidSettlements = settlements.filter(settlement => 
+      settlement.fromUserId._id === balance.userId && 
+      settlement.status === 'paid'
+    );
+    
+    if (userPaidSettlements.length === 0) {
+      // console.log(`No paid settlements found for ${balance.userName}`);
+      return false;
+    }
+    
+    // Calculate total paid amount
+    const totalPaid = userPaidSettlements.reduce((sum, settlement) => sum + settlement.amount, 0);
+    const amountOwed = Math.abs(balance.balance);
+    
+    // console.log(`Payment check for ${balance.userName}:`, {
+    //   totalPaid,
+    //   amountOwed,
+    //   isCompleted: totalPaid >= amountOwed,
+    //   settlements: userPaidSettlements.length
+    // });
+    
+    // If user has paid enough to cover their debt, consider it completed
+    return totalPaid >= amountOwed;
+  };
+
+  const handleAddMember = async () => {
+    if (!groupId || !memberEmail.trim()) return;
+
+    try {
+      await axios.post(`/api/groups/${groupId}/members`, { email: memberEmail.trim() });
+      setShowAddMemberForm(false);
+      setMemberEmail('');
+      fetchGroupData(groupId);
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Failed to add member');
+    }
+  };
+
+  const handleAddGroupExpense = async () => {
+    if (!groupId || !group || !expenseData.amount || !expenseData.description) return;
+
+    try {
+      const amount = parseFloat(expenseData.amount);
+      const splitAmount = amount / group.members.length;
+
+      const splits = group.members.map(member => ({
+        userId: member.userId._id,
+        amount: splitAmount
+      }));
+
+      await axios.post(`/api/groups/${groupId}/expenses`, {
+        amount: expenseData.amount,
+        description: expenseData.description,
+        category: expenseData.category,
+        splits
+      });
+
+      setShowAddExpenseForm(false);
+      setExpenseData({ amount: '', description: '', category: 'Food' });
+      fetchGroupData(groupId);
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Failed to add expense');
+    }
+  };
+
+  // Loading state
+  if (loading || !group) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen">
         <Navbar />
-        <div className="flex items-center justify-center h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading group...</p>
+        <div className="container mx-auto px-4 py-8">
+          <button
+            onClick={handleBackToGroups}
+            className="mb-4 card-hover glass px-4 py-3 rounded-2xl text-purple-600 hover:text-purple-800 flex items-center gap-2 font-medium shadow-lg hover:shadow-xl transition-all duration-300 w-fit"
+          >
+            <span className="text-lg">←</span>
+            <span>Back to Groups</span>
+          </button>
+          
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="w-16 h-16 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center animate-pulse">
+                <span className="text-3xl">💎</span>
+              </div>
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-200 border-t-purple-600 mx-auto mb-4"></div>
+              <p className="text-gray-600 text-lg">Loading group data...</p>
+              {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+            </div>
           </div>
         </div>
       </div>
     );
   }
-
-  const totalSpent = group.expenses.reduce((sum, exp) => sum + exp.amount, 0);
-  const perPersonShare = group.members.length > 0 ? totalSpent / group.members.length : 0;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -172,201 +204,449 @@ const GroupDetails = () => {
       <div className="container mx-auto px-4 py-4 md:py-8">
         {/* Header */}
         <button
-          onClick={() => navigate('/groups')}
-          className="mb-4 text-blue-600 hover:text-blue-800 flex items-center gap-2"
+          onClick={handleBackToGroups}
+          className="mb-6 card-hover glass px-4 py-3 rounded-2xl text-purple-600 hover:text-purple-800 flex items-center gap-2 font-medium shadow-lg hover:shadow-xl transition-all duration-300 w-fit"
         >
-          ← Back to Groups
+          <span className="text-lg">←</span>
+          <span>Back to Groups</span>
         </button>
 
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-xl shadow-lg mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold mb-2">{group.name}</h1>
-          <p className="text-blue-100 mb-4">{group.description}</p>
-          
-          <div className="grid grid-cols-3 gap-4">
-            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-center">
-              <p className="text-sm text-blue-100">Total Spent</p>
-              <p className="text-2xl font-bold">${totalSpent.toFixed(2)}</p>
-            </div>
-            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-center">
-              <p className="text-sm text-blue-100">Per Person</p>
-              <p className="text-2xl font-bold">${perPersonShare.toFixed(2)}</p>
-            </div>
-            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-center">
-              <p className="text-sm text-blue-100">Members</p>
-              <p className="text-2xl font-bold">{group.members.length}</p>
-            </div>
-          </div>
-        </div>
+        {/* Group Header */}
+        <GroupHeader 
+          group={group} 
+          totalSpent={totalSpent} 
+          perPersonShare={perPersonShare} 
+        />
 
         {/* Tabs */}
-        <div className="bg-white rounded-xl shadow-md mb-6">
-          <div className="border-b flex overflow-x-auto">
-            <button
-              onClick={() => setActiveTab('expenses')}
-              className={`px-6 py-3 font-semibold transition ${
-                activeTab === 'expenses'
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              📝 Expenses
-            </button>
-            <button
-              onClick={() => setActiveTab('balances')}
-              className={`px-6 py-3 font-semibold transition ${
-                activeTab === 'balances'
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              💰 Balances
-            </button>
-            <button
-              onClick={() => setActiveTab('settlements')}
-              className={`px-6 py-3 font-semibold transition ${
-                activeTab === 'settlements'
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              💳 Payments
-            </button>
+        <div className="glass rounded-3xl shadow-lg mb-6">
+          <div className="border-b border-white/20 flex overflow-x-auto scrollbar-hide">
+            {Object.entries(TABS).map(([key, value]) => (
+              <button
+                key={key}
+                onClick={() => handleTabChange(value)}
+                className={`flex-1 min-w-0 px-3 sm:px-6 py-3 sm:py-4 font-semibold transition text-sm sm:text-base ${
+                  activeTab === value
+                    ? 'border-b-2 border-purple-500 text-purple-600 bg-white/20'
+                    : 'text-gray-600 hover:text-gray-800 hover:bg-white/10'
+                }`}
+              >
+                <span className="flex items-center justify-center gap-1 sm:gap-2">
+                  <span className="text-lg">
+                    {value === TABS.EXPENSES && '📝'}
+                    {value === TABS.BALANCES && '💰'}
+                    {value === TABS.SETTLEMENTS && '💳'}
+                  </span>
+                  <span className="hidden sm:inline">
+                    {value === TABS.EXPENSES && 'Expenses'}
+                    {value === TABS.BALANCES && 'Balances'}
+                    {value === TABS.SETTLEMENTS && 'Payments'}
+                  </span>
+                  <span className="sm:hidden">
+                    {value === TABS.EXPENSES && 'Exp'}
+                    {value === TABS.BALANCES && 'Bal'}
+                    {value === TABS.SETTLEMENTS && 'Pay'}
+                  </span>
+                </span>
+              </button>
+            ))}
           </div>
 
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3 mb-6">
+              <button
+                onClick={() => setShowAddExpenseForm(!showAddExpenseForm)}
+                className="flex-1 btn-gradient text-white py-3 px-4 rounded-2xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <span className="text-lg">{showAddExpenseForm ? '✕' : '+'}</span>
+                  <span>Add Group Expense</span>
+                </span>
+              </button>
+              <button
+                onClick={() => setShowAddMemberForm(!showAddMemberForm)}
+                className="flex-1 bg-gradient-to-r from-blue-500 to-purple-500 text-white py-3 px-4 rounded-2xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <span className="text-lg">{showAddMemberForm ? '✕' : '👥'}</span>
+                  <span>Add Member</span>
+                </span>
+              </button>
+            </div>
+
+            {/* Add Expense Form */}
+            {showAddExpenseForm && (
+              <div className="card-hover glass p-4 sm:p-6 rounded-3xl shadow-lg mb-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-green-400/20 to-emerald-500/20 rounded-full -mr-10 -mt-10"></div>
+                
+                <div className="relative z-10">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center text-xl shadow-lg">
+                      💰
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-800">Add Group Expense</h3>
+                      <p className="text-sm text-gray-600">Split equally among all members</p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Amount ($)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={expenseData.amount}
+                        onChange={(e) => setExpenseData({ ...expenseData, amount: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                      <select
+                        value={expenseData.category}
+                        onChange={(e) => setExpenseData({ ...expenseData, category: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      >
+                        <option value="Food">🍔 Food</option>
+                        <option value="Transport">🚗 Transport</option>
+                        <option value="Entertainment">🎬 Entertainment</option>
+                        <option value="Shopping">🛍️ Shopping</option>
+                        <option value="Bills">💡 Bills</option>
+                        <option value="Rent">🏠 Rent</option>
+                        <option value="Other">📱 Other</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                    <input
+                      type="text"
+                      value={expenseData.description}
+                      onChange={(e) => setExpenseData({ ...expenseData, description: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="What's this expense for?"
+                    />
+                  </div>
+
+                  {/* Split Preview */}
+                  {expenseData.amount && group && (
+                    <div className="bg-green-50 border border-green-200 rounded-2xl p-4 mb-4">
+                      <p className="text-sm font-medium text-gray-700 mb-3">Split Preview:</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {group.members.map((member, idx) => (
+                          <div key={idx} className="flex justify-between items-center text-sm bg-white rounded-xl p-2">
+                            <span className="text-gray-700">{member.userId.name}</span>
+                            <span className="font-bold text-green-600">
+                              ${(parseFloat(expenseData.amount) / group.members.length).toFixed(2)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-3 pt-3 border-t border-green-200 flex justify-between font-bold">
+                        <span>Total:</span>
+                        <span className="text-green-600">${parseFloat(expenseData.amount).toFixed(2)}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleAddGroupExpense}
+                      disabled={!expenseData.amount || !expenseData.description}
+                      className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white py-3 rounded-2xl hover:from-green-600 hover:to-emerald-600 transition-all duration-300 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Add Expense
+                    </button>
+                    <button
+                      onClick={() => setShowAddExpenseForm(false)}
+                      className="px-6 bg-gray-200 text-gray-700 py-3 rounded-2xl hover:bg-gray-300 transition-all duration-300"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Add Member Form */}
+            {showAddMemberForm && (
+              <div className="card-hover glass p-4 sm:p-6 rounded-3xl shadow-lg mb-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-blue-400/20 to-purple-500/20 rounded-full -mr-10 -mt-10"></div>
+                
+                <div className="relative z-10">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-xl shadow-lg">
+                      👥
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-800">Add Group Member</h3>
+                      <p className="text-sm text-gray-600">Invite someone to join this group</p>
+                    </div>
+                  </div>
+                  
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                    <input
+                      type="email"
+                      value={memberEmail}
+                      onChange={(e) => setMemberEmail(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter their email address"
+                    />
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleAddMember}
+                      disabled={!memberEmail.trim()}
+                      className="flex-1 bg-gradient-to-r from-blue-500 to-purple-500 text-white py-3 rounded-2xl hover:from-blue-600 hover:to-purple-600 transition-all duration-300 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Add Member
+                    </button>
+                    <button
+                      onClick={() => setShowAddMemberForm(false)}
+                      className="px-6 bg-gray-200 text-gray-700 py-3 rounded-2xl hover:bg-gray-300 transition-all duration-300"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Expenses Tab */}
-            {activeTab === 'expenses' && (
-              <div className="space-y-3">
+            {activeTab === TABS.EXPENSES && (
+              <div className="space-y-3 sm:space-y-4">
                 {group.expenses.length > 0 ? (
                   group.expenses.slice().reverse().map((expense) => (
-                    <div key={expense._id} className="bg-gray-50 p-4 rounded-lg border">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="font-semibold text-lg">{expense.description}</h3>
-                          <p className="text-sm text-gray-600">
-                            Paid by {expense.userId?.name} • {format(new Date(expense.date), 'MMM dd, yyyy')}
-                          </p>
+                    <div key={expense._id} className="card-hover glass p-4 sm:p-5 rounded-2xl relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-purple-400/20 to-pink-500/20 rounded-full -mr-8 -mt-8"></div>
+                      
+                      <div className="relative z-10">
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-bold text-base sm:text-lg text-gray-800 mb-1 truncate">{expense.description}</h3>
+                            <p className="text-xs sm:text-sm text-gray-600 mb-2">
+                              Paid by <span className="font-medium">{expense.userId?.name}</span>
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {format(new Date(expense.date), 'MMM dd, yyyy')}
+                            </p>
+                          </div>
+                          <div className="flex sm:flex-col items-center sm:items-end gap-2 sm:gap-1">
+                            <p className="text-xl sm:text-2xl font-bold text-gray-800">${expense.amount.toFixed(2)}</p>
+                            <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full whitespace-nowrap">
+                              {expense.category}
+                            </span>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-xl font-bold">${expense.amount.toFixed(2)}</p>
-                          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
-                            {expense.category}
-                          </span>
+                        <div className="mt-4 pt-3 border-t border-white/30">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs sm:text-sm text-gray-600">
+                              Split equally among {group.members.length} members
+                            </p>
+                            <p className="text-sm sm:text-base font-semibold text-purple-600">
+                              ${(expense.amount / group.members.length).toFixed(2)} each
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      <div className="mt-3 pt-3 border-t">
-                        <p className="text-xs text-gray-600 mb-2">Split: ${(expense.amount / group.members.length).toFixed(2)} per person</p>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <p className="text-center text-gray-500 py-8">No expenses yet</p>
+                  <div className="text-center py-12 sm:py-16">
+                    <div className="text-6xl sm:text-8xl mb-4 opacity-50">📝</div>
+                    <p className="text-gray-500 text-lg sm:text-xl">No expenses yet</p>
+                    <p className="text-gray-400 text-sm sm:text-base">Add an expense to get started</p>
+                  </div>
                 )}
               </div>
             )}
 
             {/* Balances Tab */}
-            {activeTab === 'balances' && (
-              <div className="space-y-4">
+            {activeTab === TABS.BALANCES && (
+              <div className="space-y-3 sm:space-y-4">
                 {balances.map((balance) => (
                   <div
                     key={balance.userId}
-                    className={`p-4 rounded-lg border-2 ${
+                    className={`card-hover glass p-4 sm:p-6 rounded-3xl relative overflow-hidden ${
                       balance.status === 'owed'
-                        ? 'bg-green-50 border-green-200'
+                        ? 'border-2 border-green-200/50'
                         : balance.status === 'owes'
-                        ? 'bg-red-50 border-red-200'
-                        : 'bg-gray-50 border-gray-200'
+                        ? 'border-2 border-red-200/50'
+                        : 'border-2 border-gray-200/50'
                     }`}
                   >
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h3 className="font-bold text-lg">{balance.userName}</h3>
-                        <p className="text-sm text-gray-600">{balance.userEmail}</p>
+                    <div className={`absolute top-0 right-0 w-20 h-20 rounded-full -mr-10 -mt-10 ${
+                      balance.status === 'owed'
+                        ? 'bg-gradient-to-br from-green-400/20 to-emerald-500/20'
+                        : balance.status === 'owes'
+                        ? 'bg-gradient-to-br from-red-400/20 to-pink-500/20'
+                        : 'bg-gradient-to-br from-gray-400/20 to-gray-500/20'
+                    }`}></div>
+                    
+                    <div className="relative z-10">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-bold text-base sm:text-lg text-gray-800 truncate">
+                              {balance.userName}
+                            </h3>
+                            {balance.userId === getCurrentUserId() && (
+                              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full whitespace-nowrap">You</span>
+                            )}
+                          </div>
+                          <p className="text-xs sm:text-sm text-gray-600 truncate">{balance.userEmail}</p>
+                        </div>
+                        <div className="flex sm:flex-col items-center sm:items-end gap-2 sm:gap-1">
+                          <p
+                            className={`text-xl sm:text-2xl font-bold ${
+                              balance.status === 'owed'
+                                ? 'text-green-600'
+                                : balance.status === 'owes'
+                                ? 'text-red-600'
+                                : 'text-gray-600'
+                            }`}
+                          >
+                            {balance.status === 'owed' && '+'}
+                            ${Math.abs(balance.balance).toFixed(2)}
+                          </p>
+                          <p className="text-xs sm:text-sm text-gray-600 whitespace-nowrap">
+                            {balance.status === 'owed' && 'is owed'}
+                            {balance.status === 'owes' && (balance.userId === getCurrentUserId() ? 'you owe' : 'owes')}
+                            {balance.status === 'settled' && 'settled up'}
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p
-                          className={`text-2xl font-bold ${
-                            balance.status === 'owed'
-                              ? 'text-green-600'
-                              : balance.status === 'owes'
-                              ? 'text-red-600'
-                              : 'text-gray-600'
-                          }`}
-                        >
-                          {balance.status === 'owed' && '+'}
-                          ${Math.abs(balance.balance).toFixed(2)}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          {balance.status === 'owed' && 'is owed'}
-                          {balance.status === 'owes' && 'owes'}
-                          {balance.status === 'settled' && 'settled up'}
-                        </p>
-                      </div>
+                      {balance.userId === getCurrentUserId() && (
+                        <>
+                          {balance.status === 'settled' || hasCompletedPayment(balance) ? (
+                            <div className="mt-4 w-full bg-green-100 border-2 border-green-300 text-green-800 py-3 sm:py-4 rounded-2xl font-semibold text-sm sm:text-base text-center">
+                              <span className="flex items-center justify-center gap-2">
+                                <span className="text-lg">✅</span>
+                                <span>Settled</span>
+                              </span>
+                            </div>
+                          ) : balance.status === 'owes' ? (
+                            <button
+                              onClick={() => handlePayNow(balance)}
+                              className="mt-4 w-full btn-gradient text-white py-3 sm:py-4 rounded-2xl font-semibold text-sm sm:text-base shadow-lg hover:shadow-xl transition-all duration-300"
+                            >
+                              <span className="flex items-center justify-center gap-2">
+                                <span className="text-lg">💳</span>
+                                <span>Pay Now via UPI</span>
+                              </span>
+                            </button>
+                          ) : null}
+                        </>
+                      )}
                     </div>
-                    {balance.status === 'owes' && (
-                      <button
-                        onClick={() => handlePayNow(balance)}
-                        className="mt-3 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition font-semibold"
-                      >
-                        💳 Pay Now via UPI
-                      </button>
-                    )}
                   </div>
                 ))}
                 {balances.length === 0 && (
-                  <p className="text-center text-gray-500 py-8">No balances to show</p>
+                  <div className="text-center py-12 sm:py-16">
+                    <div className="text-6xl sm:text-8xl mb-4 opacity-50">💰</div>
+                    <p className="text-gray-500 text-lg sm:text-xl">No balances to show</p>
+                    <p className="text-gray-400 text-sm sm:text-base">Add expenses to see who owes what</p>
+                  </div>
                 )}
               </div>
             )}
 
             {/* Settlements Tab */}
-            {activeTab === 'settlements' && (
-              <div className="space-y-3">
+            {activeTab === TABS.SETTLEMENTS && (
+              <div className="space-y-4">
                 {settlements.map((settlement) => (
                   <div
                     key={settlement._id}
-                    className={`p-4 rounded-lg border ${
+                    className={`card-hover glass p-4 sm:p-6 rounded-3xl relative overflow-hidden ${
                       settlement.status === 'paid'
-                        ? 'bg-green-50 border-green-200'
-                        : 'bg-yellow-50 border-yellow-200'
+                        ? 'border-2 border-green-200/50'
+                        : 'border-2 border-yellow-200/50'
                     }`}
                   >
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <p className="font-semibold">
-                          {settlement.fromUserId.name} → {settlement.toUserId.name}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          {format(new Date(settlement.createdAt), 'MMM dd, yyyy HH:mm')}
-                        </p>
+                    <div className={`absolute top-0 right-0 w-20 h-20 rounded-full -mr-10 -mt-10 ${
+                      settlement.status === 'paid'
+                        ? 'bg-gradient-to-br from-green-400/20 to-emerald-500/20'
+                        : 'bg-gradient-to-br from-yellow-400/20 to-orange-500/20'
+                    }`}></div>
+                    
+                    <div className="relative z-10">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm shadow-lg">
+                              {settlement.fromUserId.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="flex items-center gap-2 text-gray-600">
+                              <span className="text-lg">→</span>
+                            </div>
+                            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center text-white font-bold text-sm shadow-lg">
+                              {settlement.toUserId.name.charAt(0).toUpperCase()}
+                            </div>
+                          </div>
+                          <p className="font-bold text-base sm:text-lg text-gray-800 mb-1">
+                            {settlement.fromUserId.name} → {settlement.toUserId.name}
+                          </p>
+                          <p className="text-xs sm:text-sm text-gray-600">
+                            {format(new Date(settlement.createdAt), 'MMM dd, yyyy • HH:mm')}
+                          </p>
+                        </div>
+                        <div className="flex sm:flex-col items-center sm:items-end gap-2 sm:gap-1">
+                          <p className="text-xl sm:text-2xl font-bold text-gray-800">${settlement.amount.toFixed(2)}</p>
+                          <span
+                            className={`text-xs px-3 py-1 rounded-full font-medium ${
+                              settlement.status === 'paid'
+                                ? 'bg-green-100/80 text-green-700 backdrop-blur-sm'
+                                : 'bg-yellow-100/80 text-yellow-700 backdrop-blur-sm'
+                            }`}
+                          >
+                            {settlement.status === 'paid' ? '✅ Completed' : '⏳ Pending'}
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-xl font-bold">${settlement.amount.toFixed(2)}</p>
-                        <span
-                          className={`text-xs px-2 py-1 rounded-full ${
-                            settlement.status === 'paid'
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-yellow-100 text-yellow-700'
-                          }`}
-                        >
-                          {settlement.status === 'paid' ? '✅ Paid' : '⏳ Pending'}
-                        </span>
-                      </div>
+                      
+                      {settlement.status === 'paid' && settlement.paymentMethod && (
+                        <div className="mt-4 pt-4 border-t border-white/30">
+                          <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-3 sm:p-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                              <div>
+                                <p className="text-gray-600 font-medium mb-1">Payment Method</p>
+                                <p className="text-gray-800 font-semibold">{settlement.paymentMethod}</p>
+                              </div>
+                              {settlement.transactionId && (
+                                <div>
+                                  <p className="text-gray-600 font-medium mb-1">Transaction ID</p>
+                                  <p className="text-gray-800 font-mono text-xs break-all">{settlement.transactionId}</p>
+                                </div>
+                              )}
+                              {settlement.paidAt && (
+                                <div>
+                                  <p className="text-gray-600 font-medium mb-1">Paid On</p>
+                                  <p className="text-gray-800 font-semibold">
+                                    {format(new Date(settlement.paidAt), 'MMM dd, yyyy')}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    {settlement.status === 'paid' && settlement.paymentMethod && (
-                      <div className="mt-2 pt-2 border-t text-sm text-gray-600">
-                        <p>Payment: {settlement.paymentMethod}</p>
-                        {settlement.transactionId && <p>ID: {settlement.transactionId}</p>}
-                        {settlement.paidAt && (
-                          <p>Paid: {format(new Date(settlement.paidAt), 'MMM dd, yyyy HH:mm')}</p>
-                        )}
-                      </div>
-                    )}
                   </div>
                 ))}
                 {settlements.length === 0 && (
-                  <p className="text-center text-gray-500 py-8">No payment history</p>
+                  <div className="text-center py-12 sm:py-16">
+                    <div className="w-20 h-20 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-4xl shadow-lg opacity-50">
+                      💳
+                    </div>
+                    <p className="text-gray-500 text-lg sm:text-xl mb-2">No payment history</p>
+                    <p className="text-gray-400 text-sm sm:text-base">Payments will appear here once made</p>
+                  </div>
                 )}
               </div>
             )}
@@ -375,113 +655,19 @@ const GroupDetails = () => {
       </div>
 
       {/* Payment Modal */}
-      {showPaymentModal && selectedBalance && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-4 my-4">
-            <div className="flex justify-between items-center mb-3">
-              <h2 className="text-xl font-bold">Pay ₹{paymentAmount.toFixed(2)}</h2>
-              <button
-                onClick={() => {
-                  setShowPaymentModal(false);
-                  setTransactionId('');
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <p className="text-sm text-gray-600 mb-4">
-              To: <span className="font-semibold">{payeeName}</span>
-            </p>
-
-            {/* UPI Payment Section */}
-            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mb-4">
-              <h3 className="font-semibold text-blue-900 mb-3 text-center">📱 Pay via UPI</h3>
-              {upiLink && payeeUpiId ? (
-                <>
-                  <div className="flex justify-center mb-3">
-                    <div className="bg-white p-3 rounded-lg shadow">
-                      <QRCodeSVG value={upiLink} size={150} />
-                    </div>
-                  </div>
-                  <div className="bg-white rounded-lg p-3 mb-3">
-                    <p className="text-xs text-gray-600 mb-1">UPI ID:</p>
-                    <p className="font-mono text-sm text-blue-700 font-bold break-all">{payeeUpiId}</p>
-                  </div>
-                  <p className="text-xs text-center text-gray-700 mb-2">
-                    Scan QR code with any UPI app or pay to the UPI ID above
-                  </p>
-                  <div className="bg-blue-100 rounded p-2">
-                    <p className="text-xs text-blue-800 text-center">
-                      💡 Works with GPay, PhonePe, Paytm, BHIM, etc.
-                    </p>
-                  </div>
-                </>
-              ) : (
-                <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
-                  <p className="text-sm text-yellow-800 text-center">
-                    ⚠️ Payee hasn't set up their UPI ID yet.
-                    <br />
-                    Please ask them to add it in Profile settings.
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Payment Verification Form */}
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-              <p className="text-sm font-semibold text-gray-800 mb-3 text-center">
-                After payment, verify here:
-              </p>
-              <div className="space-y-2">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Payment Method</label>
-                  <select
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option>UPI</option>
-                    <option>Cash</option>
-                    <option>Bank Transfer</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Transaction ID <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={transactionId}
-                    onChange={(e) => setTransactionId(e.target.value)}
-                    placeholder="e.g., 123456789012"
-                    className="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <button
-                  onClick={handleMarkAsPaid}
-                  className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition font-semibold text-sm"
-                >
-                  ✅ Verify Manual Payment
-                </button>
-              </div>
-            </div>
-
-            <button
-              onClick={() => {
-                setShowPaymentModal(false);
-                setTransactionId('');
-              }}
-              className="w-full mt-3 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition text-sm"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+      <PaymentModal
+        isOpen={paymentModal.isOpen}
+        payeeName={paymentModal.payeeName}
+        paymentAmount={paymentModal.paymentAmount}
+        upiLink={paymentModal.upiLink}
+        payeeUpiId={paymentModal.payeeUpiId}
+        paymentMethod={paymentMethod}
+        transactionId={transactionId}
+        onClose={closePaymentModal}
+        onPaymentMethodChange={setPaymentMethod}
+        onTransactionIdChange={setTransactionId}
+        onMarkAsPaid={handleMarkAsPaid}
+      />
     </div>
   );
 };

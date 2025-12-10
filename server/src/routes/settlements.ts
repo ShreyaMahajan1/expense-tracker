@@ -1,5 +1,18 @@
 import { Router } from 'express';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { 
+  validateObjectId, 
+  validateSettlement, 
+  validatePaymentVerification,
+  handleValidationErrors 
+} from '../middleware/validation';
+import { 
+  checkGroupMembership, 
+  checkSettlementAccess, 
+  checkSettlementCreation,
+  checkPaymentMarking,
+  checkDuplicateSettlement 
+} from '../middleware/authorization';
 import Settlement from '../models/Settlement';
 import Group from '../models/Group';
 import Expense from '../models/Expense';
@@ -7,6 +20,38 @@ import ExpenseSplit from '../models/ExpenseSplit';
 import User from '../models/User';
 
 const router = Router();
+
+// Debug endpoint to check expenses and splits
+router.get('/group/:groupId/debug', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { groupId } = req.params;
+    
+    const expenses = await Expense.find({ groupId }).populate('userId', 'name email');
+    const splits = await ExpenseSplit.find({
+      expenseId: { $in: expenses.map(e => e._id) }
+    }).populate('userId', 'name email');
+    
+    res.json({
+      groupId,
+      expenses: expenses.map(e => ({
+        id: e._id,
+        amount: e.amount,
+        description: e.description,
+        payer: e.userId.name,
+        payerId: e.userId._id
+      })),
+      splits: splits.map(s => ({
+        id: s._id,
+        expenseId: s.expenseId,
+        amount: s.amount,
+        user: s.userId.name,
+        userId: s.userId._id
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Debug failed' });
+  }
+});
 
 // Calculate balances for a group
 router.get('/group/:groupId/balances', authenticate, async (req: AuthRequest, res) => {
@@ -19,45 +64,114 @@ router.get('/group/:groupId/balances', authenticate, async (req: AuthRequest, re
       expenseId: { $in: expenses.map(e => e._id) }
     }).populate('userId', 'name email');
 
-    // Calculate who owes whom
-    const balances: Record<string, number> = {};
-
-    // Initialize balances
-    expenses.forEach(expense => {
-      const payerId = expense.userId._id.toString();
-      if (!balances[payerId]) balances[payerId] = 0;
-    });
-
-    // Add what each person paid
-    expenses.forEach(expense => {
-      const payerId = expense.userId._id.toString();
-      balances[payerId] += expense.amount;
-    });
-
-    // Subtract what each person owes
-    splits.forEach(split => {
-      const userId = split.userId._id.toString();
-      if (!balances[userId]) balances[userId] = 0;
-      balances[userId] -= split.amount;
-    });
-
-    // Get user details
+    // Get user details first
     const group = await Group.findById(groupId).populate('members.userId', 'name email');
     if (!group) {
       return res.status(404).json({ error: 'Group not found' });
     }
 
-    const balanceDetails = Object.entries(balances).map(([userId, balance]) => {
-      const member = group.members.find(m => m.userId._id.toString() === userId);
-      return {
-        userId,
-        userName: member?.userId.name || 'Unknown',
-        userEmail: member?.userId.email || '',
-        balance: balance,
-        status: balance > 0 ? 'owed' : balance < 0 ? 'owes' : 'settled'
-      };
+
+
+    // Calculate who owes whom - Simple approach
+    const balances: Record<string, number> = {};
+
+    // Initialize balances for all group members
+    group.members.forEach(member => {
+      const userId = member.userId._id.toString();
+      balances[userId] = 0;
     });
 
+    // Add what each person paid
+    expenses.forEach(expense => {
+      const payerId = expense.userId._id.toString();
+      if (balances.hasOwnProperty(payerId)) {
+        balances[payerId] += expense.amount;
+      }
+    });
+
+    // Subtract what each person owes
+    splits.forEach(split => {
+      const userId = split.userId._id.toString();
+      if (balances.hasOwnProperty(userId)) {
+        balances[userId] -= split.amount;
+      }
+    });
+
+    // Get all paid settlements for this group and adjust balances
+    const paidSettlements = await Settlement.find({
+      groupId,
+      status: 'paid'
+    }).populate('fromUserId toUserId', 'name email');
+
+    // Adjust balances based on paid settlements
+    paidSettlements.forEach(settlement => {
+      const fromUserId = settlement.fromUserId._id.toString();
+      const toUserId = settlement.toUserId._id.toString();
+      
+      if (balances.hasOwnProperty(fromUserId) && balances.hasOwnProperty(toUserId)) {
+        // The person who paid reduces their debt
+        balances[fromUserId] += settlement.amount;
+        // The person who received payment reduces what they're owed
+        balances[toUserId] -= settlement.amount;
+      }
+    });
+
+    const balanceDetails = Object.entries(balances).map(([userId, balance]) => {
+      const member = group.members.find(m => m.userId._id.toString() === userId);
+      
+      // Check if this user has any paid settlements (either as payer or receiver)
+      const userPaidSettlements = paidSettlements.filter(settlement => 
+        settlement.fromUserId._id.toString() === userId || 
+        settlement.toUserId._id.toString() === userId
+      );
+      
+      // Calculate the rounded balance for precision
+      const roundedBalance = Math.round(balance * 100) / 100;
+      
+      // Determine status based on balance and settlements
+      let status: 'settled' | 'owed' | 'owes';
+      
+      if (Math.abs(roundedBalance) < 0.01) {
+        // Balance is essentially zero
+        status = 'settled';
+      } else if (roundedBalance > 0.01) {
+        // User is owed money
+        status = 'owed';
+      } else {
+        // User owes money - but check if they have paid settlements that cover this
+        const totalPaidByUser = userPaidSettlements
+          .filter(s => s.fromUserId._id.toString() === userId)
+          .reduce((sum, s) => sum + s.amount, 0);
+        
+        const totalOwedAmount = Math.abs(roundedBalance);
+        
+        // Debug logging (remove in production)
+        // console.log(`Balance calculation for ${member?.userId.name}:`, {
+        //   userId,
+        //   originalBalance: balance,
+        //   roundedBalance,
+        //   totalPaidByUser,
+        //   totalOwedAmount,
+        //   userPaidSettlements: userPaidSettlements.length
+        // });
+        
+        // If user has paid settlements that cover or exceed what they owe, mark as settled
+        if (totalPaidByUser >= totalOwedAmount) {
+          status = 'settled';
+        } else {
+          status = 'owes';
+        }
+      }
+      
+      return {
+        userId,
+        userName: member?.userId.name || 'Unknown User',
+        userEmail: member?.userId.email || 'No email',
+        balance: roundedBalance,
+        status,
+        paidSettlements: userPaidSettlements.length // For debugging
+      };
+    });
     res.json(balanceDetails);
   } catch (error) {
     console.error('Balance calculation error:', error);

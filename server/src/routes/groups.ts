@@ -86,6 +86,14 @@ router.post('/:id/expenses', authenticate, async (req: AuthRequest, res) => {
     const { id } = req.params;
     const { amount, description, category, splits } = req.body;
 
+    console.log('Creating group expense:', { amount, description, category, groupId: id });
+
+    // Get group to find all members
+    const group = await Group.findById(id);
+    if (!group) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+
     const expense = await Expense.create({
       amount: parseFloat(amount),
       description,
@@ -94,21 +102,37 @@ router.post('/:id/expenses', authenticate, async (req: AuthRequest, res) => {
       groupId: id
     });
 
+    console.log('Created expense:', expense._id);
+
+    // Create splits - either use provided splits or create equal splits for all members
+    let splitsToCreate = [];
+    
     if (splits && splits.length > 0) {
-      await ExpenseSplit.insertMany(
-        splits.map((split: any) => ({
-          expenseId: expense._id,
-          userId: split.userId,
-          amount: parseFloat(split.amount)
-        }))
-      );
+      splitsToCreate = splits.map((split: any) => ({
+        expenseId: expense._id,
+        userId: split.userId,
+        amount: parseFloat(split.amount)
+      }));
+    } else {
+      // Create equal splits for all group members
+      const splitAmount = parseFloat(amount) / group.members.length;
+      splitsToCreate = group.members.map(member => ({
+        expenseId: expense._id,
+        userId: member.userId,
+        amount: splitAmount
+      }));
     }
+
+    console.log('Creating splits:', splitsToCreate);
+
+    await ExpenseSplit.insertMany(splitsToCreate);
 
     const io = req.app.get('io');
     io.to(`group-${id}`).emit('new-expense', expense);
 
     res.json(expense);
   } catch (error) {
+    console.error('Failed to create group expense:', error);
     res.status(400).json({ error: 'Failed to create group expense' });
   }
 });

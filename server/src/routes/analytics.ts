@@ -14,10 +14,9 @@ router.get('/summary', authenticate, async (req: AuthRequest, res) => {
     const startDate = new Date(currentYear, currentMonth - 1, 1);
     const endDate = new Date(currentYear, currentMonth, 0);
 
-    // Current month expenses
+    // Current month expenses (including group expenses)
     const expenses = await Expense.find({
       userId: req.userId,
-      groupId: null,
       date: { $gte: startDate, $lte: endDate }
     });
 
@@ -33,7 +32,6 @@ router.get('/summary', authenticate, async (req: AuthRequest, res) => {
 
     const prevExpenses = await Expense.find({
       userId: req.userId,
-      groupId: null,
       date: { $gte: prevStartDate, $lte: prevEndDate }
     });
 

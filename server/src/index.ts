@@ -16,6 +16,7 @@ import budgetRoutes from './routes/budget';
 import analyticsRoutes from './routes/analytics';
 import settlementRoutes from './routes/settlements';
 import profileRoutes from './routes/profile';
+import { initializeNotificationRoutes } from './routes/notifications';
 
 dotenv.config();
 
@@ -35,33 +36,63 @@ const io = new Server(httpServer, {
 // Connect to MongoDB
 connectDB();
 
+// CORS - Must be first!
+app.use(cors({
+  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  optionsSuccessStatus: 200
+}));
+
+// Handle preflight requests
+app.options('*', cors());
+
 // Security Middleware
-app.use(helmet()); // Set security HTTP headers
+app.use(helmet({
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+})); // Set security HTTP headers
 app.use(mongoSanitize()); // Sanitize data against NoSQL injection
 app.use(hpp()); // Prevent HTTP parameter pollution
 
-// Rate limiting
+// Rate limiting - More generous for development
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.'
+  max: 1000, // Increased to 1000 requests per 15 minutes for development
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use('/api/', limiter);
 
-// Auth rate limiting (stricter)
+// Auth rate limiting (stricter but reasonable)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5, // 5 login attempts per 15 minutes
-  message: 'Too many login attempts, please try again later.'
+  max: 20, // Increased to 20 login attempts per 15 minutes
+  message: 'Too many login attempts, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 
-// CORS
-app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
-  credentials: true
-}));
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path} - Origin: ${req.headers.origin}`);
+  
+  // Add CORS headers manually as backup
+  res.header('Access-Control-Allow-Origin', process.env.CLIENT_URL || 'http://localhost:5173');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
 
 // Body parser
 app.use(express.json({ limit: '10mb' }));
@@ -79,10 +110,17 @@ app.use('/api/budget', budgetRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/settlements', settlementRoutes);
 app.use('/api/profile', profileRoutes);
+app.use('/api/notifications', initializeNotificationRoutes(io));
 
 // Socket.io connection
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
+
+  // Join user-specific room for notifications
+  socket.on('join-user', (userId: string) => {
+    socket.join(`user-${userId}`);
+    console.log(`User ${userId} joined their notification room`);
+  });
 
   socket.on('join-group', (groupId: string) => {
     socket.join(`group-${groupId}`);
