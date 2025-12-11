@@ -15,6 +15,7 @@ import Profile from './pages/Profile';
 import PrivateRoute from './components/PrivateRoute';
 import UpiReminder from './components/UpiReminder';
 
+
 function App() {
   return (
     <AuthProvider>

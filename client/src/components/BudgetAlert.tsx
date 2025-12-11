@@ -25,13 +25,6 @@ const BudgetAlert = () => {
     }
   };
 
-  const getBudgetStatusColor = (percentage: number) => {
-    if (percentage >= 100) return 'bg-red-100 border-red-300 text-red-800';
-    if (percentage >= 90) return 'bg-orange-100 border-orange-300 text-orange-800';
-    if (percentage >= 75) return 'bg-yellow-100 border-yellow-300 text-yellow-800';
-    return 'bg-green-100 border-green-300 text-green-800';
-  };
-
   const getBudgetIcon = (percentage: number) => {
     if (percentage >= 100) return '🚨';
     if (percentage >= 90) return '⚠️';
@@ -39,52 +32,101 @@ const BudgetAlert = () => {
     return '✅';
   };
 
+  const getBudgetTextColor = (percentage: number) => {
+    if (percentage >= 90) return 'text-red-600';
+    if (percentage >= 75) return 'text-slate-700';
+    return 'text-blue-600';
+  };
+
+  const getBudgetMessage = (percentage: number) => {
+    if (percentage >= 100) return 'Budget exceeded';
+    if (percentage >= 90) return 'Almost at limit';
+    if (percentage >= 75) return 'Approaching limit';
+    return 'On track';
+  };
+
   const criticalBudgets = budgets.filter(b => b.percentage >= 75);
 
   if (criticalBudgets.length === 0) return null;
 
   return (
-    <div className="mb-6">
-      <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-        <span>⚠️</span>
-        Budget Alerts
-      </h3>
-      <div className="space-y-3">
+    <div className="mb-10">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+          <span className="text-xl">⚠️</span>
+        </div>
+        <div>
+          <h2 className="text-xl font-bold text-slate-900">Budget Alerts</h2>
+          <p className="text-slate-600 text-sm">Categories that need your attention</p>
+        </div>
+      </div>
+      
+      <div className={`grid gap-6 ${
+        criticalBudgets.length === 1 ? 'grid-cols-1' :
+        criticalBudgets.length === 2 ? 'grid-cols-1 md:grid-cols-2' :
+        'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+      }`}>
         {criticalBudgets.map((budget) => (
           <div
             key={budget.category}
-            className={`p-4 rounded-2xl border-2 ${getBudgetStatusColor(budget.percentage)}`}
+            className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow duration-200"
           >
-            <div className="flex items-center justify-between">
+            <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
-                <span className="text-2xl">{getBudgetIcon(budget.percentage)}</span>
+                <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center">
+                  <span className="text-2xl">{getBudgetIcon(budget.percentage)}</span>
+                </div>
                 <div>
-                  <h4 className="font-semibold">{budget.category}</h4>
-                  <p className="text-sm">
-                    ${budget.spent.toFixed(2)} of ${budget.limit.toFixed(2)} spent
+                  <h4 className="font-semibold text-lg text-slate-900">{budget.category}</h4>
+                  <p className="text-sm text-slate-600 mt-1">
+                    ${budget.spent.toFixed(2)} of ${budget.limit.toFixed(2)}
                   </p>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-lg font-bold">{budget.percentage.toFixed(1)}%</p>
-                <p className="text-sm">
-                  {budget.remaining > 0 ? `$${budget.remaining.toFixed(2)} left` : `$${Math.abs(budget.remaining).toFixed(2)} over`}
+                <p className={`text-xl font-bold ${getBudgetTextColor(budget.percentage)}`}>
+                  {budget.percentage.toFixed(0)}%
+                </p>
+                <p className="text-xs text-slate-500 mt-1">
+                  {getBudgetMessage(budget.percentage)}
                 </p>
               </div>
             </div>
             
-            {/* Progress bar */}
-            <div className="mt-3">
-              <div className="w-full bg-white/50 rounded-full h-2">
+            <div className="space-y-3">
+              <div className="w-full bg-slate-100 rounded-full h-2">
                 <div
-                  className={`h-2 rounded-full transition-all duration-300 ${
+                  className={`h-2 rounded-full transition-all duration-500 ${
                     budget.percentage >= 100 ? 'bg-red-500' :
-                    budget.percentage >= 90 ? 'bg-orange-500' :
-                    budget.percentage >= 75 ? 'bg-yellow-500' : 'bg-green-500'
+                    budget.percentage >= 90 ? 'bg-red-500' :
+                    budget.percentage >= 75 ? 'bg-slate-400' : 'bg-blue-500'
                   }`}
                   style={{ width: `${Math.min(budget.percentage, 100)}%` }}
                 />
               </div>
+
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-600">
+                  {budget.remaining > 0 ? 'Remaining' : 'Over budget'}
+                </span>
+                <span className={`font-medium ${
+                  budget.remaining > 0 ? 'text-slate-700' : 'text-red-600'
+                }`}>
+                  ${Math.abs(budget.remaining).toFixed(2)}
+                </span>
+              </div>
+
+              {budget.percentage >= 90 && (
+                <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                  <p className="text-xs text-red-700 font-medium flex items-center gap-2">
+                    <span>{budget.percentage >= 100 ? '🚨' : '⚠️'}</span>
+                    {budget.percentage >= 100 
+                      ? 'You have exceeded your budget limit'
+                      : 'Consider reducing spending in this category'
+                    }
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         ))}

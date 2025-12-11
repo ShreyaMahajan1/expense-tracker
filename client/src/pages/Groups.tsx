@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
-// import { format } from 'date-fns';
+import { useToast } from '../utils/toast';
 
 interface Group {
   _id: string;
@@ -25,64 +25,41 @@ interface Group {
 const Groups = () => {
   const navigate = useNavigate();
   const [groups, setGroups] = useState<Group[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ name: '', description: '' });
+  const { showSuccess, showError } = useToast();
 
   useEffect(() => {
     fetchGroups();
   }, []);
 
   const fetchGroups = async () => {
-    const response = await axios.get('/api/groups');
-    setGroups(response.data);
+    try {
+      setLoading(true);
+      const response = await axios.get('/api/groups');
+      setGroups(response.data);
+    } catch (error) {
+      console.error('Error fetching groups:', error);
+      showError('Failed to load groups');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCreateGroup = async (e: React.FormEvent) => {
     e.preventDefault();
-    await axios.post('/api/groups', formData);
-    setShowForm(false);
-    setFormData({ name: '', description: '' });
-    fetchGroups();
+    
+    try {
+      await axios.post('/api/groups', formData);
+      setShowForm(false);
+      setFormData({ name: '', description: '' });
+      showSuccess('Group created successfully!');
+      fetchGroups();
+    } catch (error: any) {
+      showError(error.response?.data?.error || 'Failed to create group');
+    }
   };
-
-  // const handleAddMember = async (groupId: string) => {
-  //   try {
-  //     await axios.post(`/api/groups/${groupId}/members`, { email: memberEmail });
-  //     setShowMemberForm(null);
-  //     setMemberEmail('');
-  //     fetchGroups();
-  //   } catch (error: any) {
-  //     alert(error.response?.data?.error || 'Failed to add member');
-  //   }
-  // };
-
-  // const handleAddGroupExpense = async (groupId: string) => {
-  //   try {
-  //     const group = groups.find(g => g._id === groupId);
-  //     if (!group) return;
-
-  //     const amount = parseFloat(expenseData.amount);
-  //     const splitAmount = amount / group.members.length;
-
-  //     const splits = group.members.map(member => ({
-  //       userId: member.userId._id,
-  //       amount: splitAmount
-  //     }));
-
-  //     await axios.post(`/api/groups/${groupId}/expenses`, {
-  //       amount: expenseData.amount,
-  //       description: expenseData.description,
-  //       category: expenseData.category,
-  //       splits
-  //     });
-
-  //     setShowExpenseForm(null);
-  //     setExpenseData({ amount: '', description: '', category: 'Food' });
-  //     fetchGroups();
-  //   } catch (error: any) {
-  //     alert(error.response?.data?.error || 'Failed to add expense');
-  //   }
-  // };
 
   const calculateGroupTotal = (expenses: any[]) => {
     return expenses.reduce((sum, exp) => sum + exp.amount, 0);
@@ -93,108 +70,133 @@ const Groups = () => {
     return group.members.length > 0 ? total / group.members.length : 0;
   };
 
-  // const getSelectedGroup = () => groups.find(g => g._id === selectedGroup);
+  // Calculate total across all groups
+  const totalAcrossGroups = groups.reduce((sum, group) => sum + calculateGroupTotal(group.expenses), 0);
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex flex-col items-center justify-center">
+          <div className="w-16 h-16 bg-blue-50 rounded-xl flex items-center justify-center mb-6">
+            <span className="text-2xl">👥</span>
+          </div>
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-200 border-t-blue-500 mb-4"></div>
+          <p className="text-slate-600 font-medium">Loading your groups...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-slate-50">
       <Navbar />
-      <div className="container mx-auto px-4 py-6 sm:py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="mb-8 sm:mb-12 text-center">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gradient mb-4">
-            Your Groups
-          </h1>
-          <p className="text-gray-600 text-base sm:text-lg max-w-2xl mx-auto mb-6">
-            Split expenses effortlessly with friends, family, and roommates ✨
-          </p>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className={`btn-gradient text-white px-6 sm:px-8 py-3 sm:py-4 rounded-3xl font-semibold text-sm sm:text-base shadow-lg hover:shadow-xl transition-all duration-300 ${
-              showForm ? 'bg-gradient-to-r from-red-400 to-pink-500' : ''
-            }`}
-          >
-            <span className="flex items-center gap-2">
-              <span className="text-lg">{showForm ? '✕' : '+'}</span>
-              <span>{showForm ? 'Cancel' : 'Create New Group'}</span>
-            </span>
-          </button>
+        <div className="mb-8">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center shadow-sm">
+              <span className="text-2xl text-white">👥</span>
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900">
+                Groups
+              </h1>
+              <p className="text-slate-600 mt-1">
+                Split expenses with friends, family, and roommates
+              </p>
+            </div>
+          </div>
+          
+          {/* Total Groups Summary */}
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-500 mb-1">Total Group Expenses</p>
+                <p className="text-3xl font-bold text-slate-900">${totalAcrossGroups.toFixed(2)}</p>
+                <p className="text-sm text-slate-500 mt-1">{groups.length} active groups</p>
+              </div>
+              <button
+                onClick={() => setShowForm(!showForm)}
+                className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors font-medium"
+              >
+                {showForm ? '✕ Cancel' : '+ Create Group'}
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Create Group Form */}
         {showForm && (
-          <div className="card-hover glass p-6 sm:p-8 rounded-3xl shadow-2xl mb-8 sm:mb-12 max-w-2xl mx-auto relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-400/20 to-pink-500/20 rounded-full -mr-16 -mt-16"></div>
-            
-            <div className="relative z-10">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-2xl shadow-lg">
-                  ✨
-                </div>
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Create New Group</h2>
-                  <p className="text-gray-600 text-sm">Start splitting expenses together</p>
-                </div>
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8 max-w-2xl mx-auto">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                <span className="text-xl">✨</span>
               </div>
-              
-              <form onSubmit={handleCreateGroup} className="space-y-6">
-                <div>
-                  <label className="block text-gray-700 font-medium mb-3">Group Name</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="input-organic w-full px-6 py-4 text-gray-800 placeholder-gray-500"
-                    placeholder="e.g., Roommates, Trip to Goa, Office Lunch"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-medium mb-3">Description (Optional)</label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="input-organic w-full px-6 py-4 text-gray-800 placeholder-gray-500 resize-none"
-                    rows={3}
-                    placeholder="What's this group for? Add some context..."
-                  />
-                </div>
-                <button 
-                  type="submit" 
-                  className="btn-gradient w-full py-4 text-white font-semibold rounded-3xl shadow-lg hover:shadow-xl transition-all duration-300"
-                >
-                  <span className="flex items-center justify-center gap-2">
-                    <span className="text-lg">🎉</span>
-                    <span>Create Group</span>
-                  </span>
-                </button>
-              </form>
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">Create New Group</h2>
+                <p className="text-slate-600 text-sm">Start splitting expenses with others</p>
+              </div>
             </div>
+            
+            <form onSubmit={handleCreateGroup} className="space-y-6">
+              <div>
+                <label className="block text-slate-700 font-medium mb-2">Group Name</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  placeholder="e.g., Roommates, Trip to Goa, Office Lunch"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-slate-700 font-medium mb-2">Description (Optional)</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
+                  rows={3}
+                  placeholder="What's this group for? Add some context..."
+                />
+              </div>
+              <button 
+                type="submit" 
+                className="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition-colors font-semibold"
+              >
+                Create Group
+              </button>
+            </form>
           </div>
         )}
 
         {/* Groups Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+        <div className={`grid gap-6 ${
+          groups.length === 0 ? 'grid-cols-1' :
+          groups.length === 1 ? 'grid-cols-1 max-w-md mx-auto' :
+          groups.length === 2 ? 'grid-cols-1 md:grid-cols-2 max-w-4xl mx-auto' :
+          'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+        }`}>
           {groups.map((group) => (
             <div
               key={group._id}
-              className="card-hover glass p-4 sm:p-6 rounded-3xl shadow-2xl relative overflow-hidden group cursor-pointer"
+              className="bg-white rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow duration-200 cursor-pointer"
               onClick={() => navigate(`/groups/${group._id}`)}
             >
-              {/* Decorative gradient blob */}
-              <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-purple-400/30 to-pink-500/30 rounded-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-500"></div>
-              
-              <div className="relative z-10">
-                {/* Group Icon & Name */}
-                <div className="flex items-start justify-between mb-4">
+              <div className="p-6">
+                {/* Group Header */}
+                <div className="flex items-start gap-3 mb-4">
+                  <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
+                    <span className="text-2xl">👥</span>
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-2xl shadow-lg mb-3 group-hover:scale-110 transition-transform duration-300">
-                      👥
-                    </div>
-                    <h3 className="font-bold text-lg sm:text-xl text-gray-800 mb-2 truncate group-hover:text-purple-600 transition-colors">
+                    <h3 className="font-semibold text-lg text-slate-900 truncate">
                       {group.name}
                     </h3>
                     {group.description && (
-                      <p className="text-gray-600 text-sm line-clamp-2 mb-4">
+                      <p className="text-sm text-slate-600 mt-1 line-clamp-2">
                         {group.description}
                       </p>
                     )}
@@ -204,16 +206,16 @@ const Groups = () => {
                 {/* Stats */}
                 <div className="space-y-3 mb-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-600 font-medium">Total Spent</span>
-                    <span className="text-lg font-bold text-gray-800">
+                    <span className="text-sm text-slate-600">Total Spent</span>
+                    <span className="text-lg font-bold text-slate-900">
                       ${calculateGroupTotal(group.expenses).toFixed(2)}
                     </span>
                   </div>
                   
                   {group.members.length > 0 && (
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-600 font-medium">Per Person</span>
-                      <span className="text-base font-bold text-purple-600">
+                      <span className="text-sm text-slate-600">Per Person</span>
+                      <span className="text-base font-semibold text-blue-600">
                         ${calculatePerPersonShare(group).toFixed(2)}
                       </span>
                     </div>
@@ -222,11 +224,11 @@ const Groups = () => {
 
                 {/* Tags */}
                 <div className="flex flex-wrap gap-2 mb-4">
-                  <div className="bg-blue-100/80 text-blue-700 px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm">
-                    👥 {group.members.length}
+                  <div className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-medium">
+                    👥 {group.members.length} members
                   </div>
-                  <div className="bg-green-100/80 text-green-700 px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm">
-                    📝 {group.expenses.length}
+                  <div className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-medium">
+                    📝 {group.expenses.length} expenses
                   </div>
                 </div>
 
@@ -237,19 +239,19 @@ const Groups = () => {
                       {group.members.slice(0, 4).map((member, idx) => (
                         <div
                           key={idx}
-                          className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold border-2 border-white shadow-md"
+                          className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold border-2 border-white shadow-sm"
                           title={member.userId.name}
                         >
                           {member.userId.name.charAt(0).toUpperCase()}
                         </div>
                       ))}
                       {group.members.length > 4 && (
-                        <div className="w-8 h-8 rounded-full bg-gray-400 flex items-center justify-center text-white text-xs font-bold border-2 border-white shadow-md">
+                        <div className="w-8 h-8 rounded-full bg-slate-400 flex items-center justify-center text-white text-xs font-bold border-2 border-white shadow-sm">
                           +{group.members.length - 4}
                         </div>
                       )}
                     </div>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-slate-500">
                       {group.members.slice(0, 2).map(m => m.userId.name).join(', ')}
                       {group.members.length > 2 && ` +${group.members.length - 2} more`}
                     </p>
@@ -262,67 +264,53 @@ const Groups = () => {
                     e.stopPropagation();
                     navigate(`/groups/${group._id}`);
                   }}
-                  className="w-full btn-gradient text-white py-3 rounded-2xl font-semibold text-sm shadow-lg hover:shadow-xl transition-all duration-300 group-hover:scale-105"
+                  className="w-full bg-slate-100 text-slate-700 py-2 rounded-lg hover:bg-slate-200 transition-colors font-medium text-sm"
                 >
-                  <span className="flex items-center justify-center gap-2">
-                    <span className="text-base">💳</span>
-                    <span>View & Manage</span>
-                  </span>
+                  View & Manage
                 </button>
               </div>
             </div>
           ))}
 
-          {/* Empty State */}
-          {groups.length === 0 && (
-            <div className="col-span-full">
-              <div className="card-hover glass p-8 sm:p-12 rounded-3xl shadow-2xl text-center max-w-md mx-auto relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-400/20 to-pink-500/20 rounded-full -mr-16 -mt-16"></div>
-                
-                <div className="relative z-10">
-                  <div className="w-20 h-20 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-4xl shadow-lg float-animation">
-                    👥
-                  </div>
-                  <h3 className="text-xl sm:text-2xl font-bold mb-3 text-gray-800">No groups yet</h3>
-                  <p className="text-gray-600 text-sm sm:text-base mb-6">
-                    Create your first group to start splitting expenses with friends and family
-                  </p>
-                  <button
-                    onClick={() => setShowForm(true)}
-                    className="btn-gradient text-white px-6 py-3 rounded-2xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
-                  >
-                    <span className="flex items-center gap-2">
-                      <span className="text-lg">✨</span>
-                      <span>Create First Group</span>
-                    </span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Add New Group Card */}
+          {/* Add New Group Card - Only show if there are existing groups */}
           {groups.length > 0 && (
             <div
               onClick={() => setShowForm(true)}
-              className="card-hover glass p-6 rounded-3xl shadow-2xl relative overflow-hidden group cursor-pointer border-2 border-dashed border-purple-300/50 hover:border-purple-400/70 transition-all duration-300"
+              className="bg-white rounded-xl shadow-sm border-2 border-dashed border-slate-300 hover:border-blue-400 transition-colors cursor-pointer"
             >
-              <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-purple-400/20 to-pink-500/20 rounded-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-500"></div>
-              
-              <div className="relative z-10 text-center py-8">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-3xl shadow-lg group-hover:scale-110 transition-transform duration-300">
-                  ➕
+              <div className="p-6 text-center py-12">
+                <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-xl flex items-center justify-center">
+                  <span className="text-2xl">➕</span>
                 </div>
-                <h3 className="font-bold text-lg text-gray-800 mb-2 group-hover:text-purple-600 transition-colors">
+                <h3 className="font-semibold text-lg text-slate-900 mb-2">
                   Create New Group
                 </h3>
-                <p className="text-gray-600 text-sm">
+                <p className="text-slate-600 text-sm">
                   Start splitting expenses with a new group
                 </p>
               </div>
             </div>
           )}
         </div>
+
+        {/* Empty State */}
+        {groups.length === 0 && (
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center max-w-md mx-auto">
+            <div className="w-16 h-16 bg-slate-100 rounded-xl flex items-center justify-center mx-auto mb-6">
+              <span className="text-3xl">👥</span>
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">No groups yet</h3>
+            <p className="text-slate-600 mb-6">
+              Create your first group to start splitting expenses with friends and family
+            </p>
+            <button
+              onClick={() => setShowForm(true)}
+              className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors font-medium"
+            >
+              Create First Group
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

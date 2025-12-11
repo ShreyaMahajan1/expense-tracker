@@ -51,9 +51,12 @@ const Profile = () => {
     e.preventDefault();
     
     // Validate UPI ID if provided
-    if (formData.upiId && !validateUpiId(formData.upiId)) {
-      showError('Please enter a valid UPI ID (e.g., yourname@paytm)');
-      return;
+    if (formData.upiId) {
+      const validation = validateUpiId(formData.upiId);
+      if (!validation.isValid) {
+        showError(validation.error || 'Please enter a valid UPI ID');
+        return;
+      }
     }
 
     setSaving(true);
@@ -212,11 +215,19 @@ const Profile = () => {
                   <div className="mt-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
                     <p className="text-sm text-blue-800 font-medium mb-2">💡 How to find your UPI ID:</p>
                     <ul className="text-xs text-blue-700 space-y-1">
-                      <li>• <strong>PhonePe:</strong> Profile → Your UPI ID</li>
-                      <li>• <strong>Google Pay:</strong> Profile → Payment methods → Show UPI ID</li>
-                      <li>• <strong>Paytm:</strong> Profile → Payment Settings → UPI ID</li>
-                      <li>• Format: yourname@paytm, yourname@ybl, phone@paytm</li>
+                      <li>• <strong>PhonePe:</strong> Profile → Your UPI ID (usually @ybl)</li>
+                      <li>• <strong>Google Pay:</strong> Profile → Payment methods → Show UPI ID (@okaxis, @okicici)</li>
+                      <li>• <strong>Paytm:</strong> Profile → Payment Settings → UPI ID (@paytm)</li>
+                      <li>• <strong>SBI:</strong> YONO SBI → UPI → Manage UPI ID (@sbi)</li>
+                      <li>• <strong>Common formats:</strong> name@paytm, name@ybl, phone@paytm, name@sbi</li>
                     </ul>
+                  </div>
+                  
+                  <div className="mt-2 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                    <p className="text-sm text-yellow-800 font-medium mb-1">⚠️ UPI ID Issues?</p>
+                    <p className="text-xs text-yellow-700">
+                      If your UPI ID doesn't work, try using a more common domain like @paytm, @ybl, or @sbi instead of @oksbi
+                    </p>
                   </div>
                 </div>
 

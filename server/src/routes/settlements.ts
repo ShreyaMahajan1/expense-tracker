@@ -1,18 +1,6 @@
 import { Router } from 'express';
 import { authenticate, AuthRequest } from '../middleware/auth';
-import { 
-  validateObjectId, 
-  validateSettlement, 
-  validatePaymentVerification,
-  handleValidationErrors 
-} from '../middleware/validation';
-import { 
-  checkGroupMembership, 
-  checkSettlementAccess, 
-  checkSettlementCreation,
-  checkPaymentMarking,
-  checkDuplicateSettlement 
-} from '../middleware/authorization';
+// Validation and authorization middleware removed for simplified approach
 import Settlement from '../models/Settlement';
 import Group from '../models/Group';
 import Expense from '../models/Expense';
@@ -145,15 +133,6 @@ router.get('/group/:groupId/balances', authenticate, async (req: AuthRequest, re
         
         const totalOwedAmount = Math.abs(roundedBalance);
         
-        // Debug logging (remove in production)
-        // console.log(`Balance calculation for ${member?.userId.name}:`, {
-        //   userId,
-        //   originalBalance: balance,
-        //   roundedBalance,
-        //   totalPaidByUser,
-        //   totalOwedAmount,
-        //   userPaidSettlements: userPaidSettlements.length
-        // });
         
         // If user has paid settlements that cover or exceed what they owe, mark as settled
         if (totalPaidByUser >= totalOwedAmount) {
@@ -271,22 +250,23 @@ router.post('/:id/upi-link', authenticate, async (req: AuthRequest, res) => {
       });
     }
     
-    // Generate UPI payment link
-    // Format: upi://pay?pa=UPI_ID&pn=NAME&am=AMOUNT&cu=INR&tn=NOTE
-    const upiId = payee.upiId;
+    // Generate UPI payment link - preserve original case as entered by user
+    const upiId = payee.upiId.trim(); // Keep exact case as entered by user
     const payeeName = (settlement.toUserId as any).name;
-    const amount = settlement.amount;
-    const note = `Settlement for group expense`;
+    const amount = settlement.amount.toFixed(2);
+    const note = `Payment from ${(settlement.fromUserId as any).name || 'Group Member'}`;
 
-    const upiLink = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(note)}`;
+    // Generate UPI payment link with domain-specific optimization
+    const domain = upiId.split('@')[1]?.toLowerCase();
     
-    // Also generate QR code data
-    const qrData = upiLink;
+    // Use ultra-simple format for SBI domains, standard format for others
+    const upiLink = (domain === 'oksbi' || domain === 'sbi') 
+      ? `upi://pay?pa=${upiId}&am=${amount}`
+      : `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(note)}`;
 
     res.json({
       upiLink,
-      qrData,
-      amount,
+      amount: parseFloat(amount),
       payeeName,
       payeeUpiId: upiId,
       settlementId: settlement._id

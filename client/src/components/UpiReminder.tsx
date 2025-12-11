@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../utils/toast';
+import { useScrollLock } from '../hooks/useScrollLock';
 import axios from '../config/axios';
 
 const UpiReminder: React.FC = () => {
@@ -10,6 +11,9 @@ const UpiReminder: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { showInfo } = useToast();
+
+  // Lock body scroll when modal is open
+  useScrollLock(showReminder);
 
   useEffect(() => {
     const checkUpiSetup = async () => {
@@ -59,8 +63,14 @@ const UpiReminder: React.FC = () => {
   if (!showReminder) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 relative overflow-hidden">
+    <div 
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+      onClick={handleDismiss}
+    >
+      <div 
+        className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 relative overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Decorative background */}
         <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-blue-400/20 to-purple-500/20 rounded-full -mr-10 -mt-10"></div>
         
