@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import axios from '../config/axios';
 import Navbar from '../components/Navbar';
 import BudgetAlert from '../components/BudgetAlert';
+import { showError } from '../utils/toast';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, Line } from 'recharts';
 
 interface Analytics {
@@ -47,6 +48,7 @@ const Dashboard = () => {
       setBudgets(budgetsRes.data);
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
+      showError('Failed to load dashboard data');
     } finally {
       setLoading(false);
     }

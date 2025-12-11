@@ -1,4 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import './styles/toast.css';
 import { AuthProvider } from './context/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -10,6 +13,7 @@ import Groups from './pages/Groups';
 import GroupDetails from './pages/GroupDetails';
 import Profile from './pages/Profile';
 import PrivateRoute from './components/PrivateRoute';
+import UpiReminder from './components/UpiReminder';
 
 function App() {
   return (
@@ -18,15 +22,29 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-          <Route path="/expenses" element={<PrivateRoute><Expenses /></PrivateRoute>} />
-          <Route path="/income" element={<PrivateRoute><Income /></PrivateRoute>} />
-          <Route path="/budget" element={<PrivateRoute><Budget /></PrivateRoute>} />
-          <Route path="/groups" element={<PrivateRoute><Groups /></PrivateRoute>} />
-          <Route path="/groups/:groupId" element={<PrivateRoute><GroupDetails /></PrivateRoute>} />
+          <Route path="/" element={<PrivateRoute><Dashboard /><UpiReminder /></PrivateRoute>} />
+          <Route path="/expenses" element={<PrivateRoute><Expenses /><UpiReminder /></PrivateRoute>} />
+          <Route path="/income" element={<PrivateRoute><Income /><UpiReminder /></PrivateRoute>} />
+          <Route path="/budget" element={<PrivateRoute><Budget /><UpiReminder /></PrivateRoute>} />
+          <Route path="/groups" element={<PrivateRoute><Groups /><UpiReminder /></PrivateRoute>} />
+          <Route path="/groups/:groupId" element={<PrivateRoute><GroupDetails /><UpiReminder /></PrivateRoute>} />
           <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
+        
+        {/* Toast Container */}
+        <ToastContainer
+          position="top-center"
+          autoClose={5000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="light"
+        />
       </BrowserRouter>
     </AuthProvider>
   );

@@ -23,6 +23,8 @@ interface UsePaymentReturn {
   markAsPaid: (settlements: any[]) => Promise<boolean>;
 }
 
+import { showSuccess, showError } from '../utils/toast';
+
 export const usePayment = (
   getCurrentUserId: () => string,
   onPaymentSuccess: () => void
@@ -46,14 +48,14 @@ export const usePayment = (
   ) => {
     // Security check
     if (balance.userId !== getCurrentUserId()) {
-      alert('You can only pay your own debts');
+      showError('You can only pay your own debts');
       return;
     }
 
     // Find payee
     const payee = balances.find(b => b.balance > 0 && b.userId !== balance.userId);
     if (!payee) {
-      alert('No one to pay in this group');
+      showError('No one to pay in this group');
       return;
     }
 
@@ -83,7 +85,7 @@ export const usePayment = (
     } catch (error: any) {
       console.error('Failed to create payment:', error);
       const errorMsg = error.response?.data?.error || 'Failed to create payment request';
-      alert(errorMsg);
+      showError(errorMsg);
     }
   }, [getCurrentUserId]);
 
@@ -101,12 +103,12 @@ export const usePayment = (
 
   const markAsPaid = useCallback(async (settlements: any[]): Promise<boolean> => {
     if (!paymentModal.isOpen || !paymentModal.selectedBalance) {
-      alert('No payment session found');
+      showError('No payment session found');
       return false;
     }
 
     if (!transactionId.trim()) {
-      alert('Please enter the transaction ID from your UPI app');
+      showError('Please enter the transaction ID from your UPI app');
       return false;
     }
 
@@ -123,15 +125,15 @@ export const usePayment = (
 
         closePaymentModal();
         onPaymentSuccess();
-        alert('✅ Payment recorded successfully! The payee can verify the transaction ID.');
+        showSuccess('✅ Payment recorded successfully! The payee can verify the transaction ID.');
         return true;
       } else {
-        alert('No pending settlement found for this payment');
+        showError('No pending settlement found for this payment');
         return false;
       }
     } catch (error) {
       console.error('Failed to mark as paid:', error);
-      alert('Failed to mark payment as paid');
+      showError('Failed to mark payment as paid');
       return false;
     }
   }, [paymentModal.isOpen, paymentModal.selectedBalance, transactionId, paymentMethod, closePaymentModal, onPaymentSuccess]);

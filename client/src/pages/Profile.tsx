@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import axios from '../config/axios';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../utils/toast';
+import { maskUpiId, validateUpiId, formatUpiId } from '../utils/upiUtils';
 
 interface Profile {
   _id: string;
@@ -12,7 +14,8 @@ interface Profile {
 }
 
 const Profile = () => {
-  const { } = useAuth();
+  const { updateUser } = useAuth();
+  const { showSuccess, showError } = useToast();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -38,6 +41,7 @@ const Profile = () => {
       });
     } catch (error) {
       console.error('Failed to fetch profile:', error);
+      showError('Failed to load profile data');
     } finally {
       setLoading(false);
     }
@@ -45,15 +49,39 @@ const Profile = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate UPI ID if provided
+    if (formData.upiId && !validateUpiId(formData.upiId)) {
+      showError('Please enter a valid UPI ID (e.g., yourname@paytm)');
+      return;
+    }
+
     setSaving(true);
     try {
-      const response = await axios.put('/api/profile', formData);
+      const dataToSubmit = {
+        ...formData,
+        upiId: formData.upiId ? formatUpiId(formData.upiId) : ''
+      };
+      
+      const response = await axios.put('/api/profile', dataToSubmit);
       setProfile(response.data);
       setIsEditing(false);
-      alert('Profile updated successfully!');
-    } catch (error) {
+      
+      // Update the user in AuthContext so navbar reflects the changes
+      updateUser({
+        name: response.data.name,
+        email: response.data.email
+      });
+      
+      if (formData.upiId && !profile?.upiId) {
+        showSuccess('🎉 Great! Your UPI ID has been set up. You can now receive payments from group members!');
+      } else {
+        showSuccess('Profile updated successfully!');
+      }
+    } catch (error: any) {
       console.error('Failed to update profile:', error);
-      alert('Failed to update profile');
+      const errorMessage = error.response?.data?.error || 'Failed to update profile';
+      showError(errorMessage);
     } finally {
       setSaving(false);
     }
@@ -112,9 +140,18 @@ const Profile = () => {
                   {profile?.upiId ? (
                     <div className="flex items-center gap-2">
                       <p className="text-lg font-mono bg-green-50 text-green-700 px-3 py-2 rounded-lg">
-                        {profile.upiId}
+                        {maskUpiId(profile.upiId)}
                       </p>
                       <span className="text-green-600">✅</span>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(profile.upiId!);
+                          showSuccess('UPI ID copied to clipboard!');
+                        }}
+                        className="text-blue-600 hover:text-blue-800 text-sm underline"
+                      >
+                        Copy Full ID
+                      </button>
                     </div>
                   ) : (
                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">

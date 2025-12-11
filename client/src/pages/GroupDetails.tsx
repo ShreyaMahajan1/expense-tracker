@@ -10,6 +10,7 @@ import PaymentModal from '../components/PaymentModal';
 
 // Hooks
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../utils/toast';
 import { useSecurity } from '../hooks/useSecurity';
 import { useGroupData } from '../hooks/useGroupData';
 import { usePayment } from '../hooks/usePayment';
@@ -22,6 +23,7 @@ const GroupDetails: React.FC = () => {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
   const { } = useAuth();
+  const { showError } = useToast();
   const { currentUserId } = useSecurity();
   
   // Custom hooks
@@ -138,7 +140,7 @@ const GroupDetails: React.FC = () => {
       setMemberEmail('');
       fetchGroupData(groupId);
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Failed to add member');
+      showError(error.response?.data?.error || 'Failed to add member');
     }
   };
 
@@ -165,7 +167,7 @@ const GroupDetails: React.FC = () => {
       setExpenseData({ amount: '', description: '', category: 'Food' });
       fetchGroupData(groupId);
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Failed to add expense');
+      showError(error.response?.data?.error || 'Failed to add expense');
     }
   };
 
