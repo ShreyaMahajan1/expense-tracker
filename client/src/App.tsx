@@ -14,6 +14,7 @@ import GroupDetails from './pages/GroupDetails';
 import Profile from './pages/Profile';
 import PrivateRoute from './components/PrivateRoute';
 import UpiReminder from './components/UpiReminder';
+import NotificationPermission from './components/NotificationPermission';
 
 
 function App() {
@@ -23,12 +24,12 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/" element={<PrivateRoute><Dashboard /><UpiReminder /></PrivateRoute>} />
-          <Route path="/expenses" element={<PrivateRoute><Expenses /><UpiReminder /></PrivateRoute>} />
-          <Route path="/income" element={<PrivateRoute><Income /><UpiReminder /></PrivateRoute>} />
-          <Route path="/budget" element={<PrivateRoute><Budget /><UpiReminder /></PrivateRoute>} />
-          <Route path="/groups" element={<PrivateRoute><Groups /><UpiReminder /></PrivateRoute>} />
-          <Route path="/groups/:groupId" element={<PrivateRoute><GroupDetails /><UpiReminder /></PrivateRoute>} />
+          <Route path="/" element={<PrivateRoute><Dashboard /><UpiReminder /><NotificationPermission /></PrivateRoute>} />
+          <Route path="/expenses" element={<PrivateRoute><Expenses /><UpiReminder /><NotificationPermission /></PrivateRoute>} />
+          <Route path="/income" element={<PrivateRoute><Income /><UpiReminder /><NotificationPermission /></PrivateRoute>} />
+          <Route path="/budget" element={<PrivateRoute><Budget /><UpiReminder /><NotificationPermission /></PrivateRoute>} />
+          <Route path="/groups" element={<PrivateRoute><Groups /><UpiReminder /><NotificationPermission /></PrivateRoute>} />
+          <Route path="/groups/:groupId" element={<PrivateRoute><GroupDetails /><UpiReminder /><NotificationPermission /></PrivateRoute>} />
           <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>

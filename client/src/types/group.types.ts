@@ -47,4 +47,4 @@ export interface Group {
   expenses: GroupExpense[];
 }
 
-export type TabType = 'expenses' | 'balances' | 'settlements';
+export type TabType = 'expenses' | 'balances' | 'settlements' | 'members';

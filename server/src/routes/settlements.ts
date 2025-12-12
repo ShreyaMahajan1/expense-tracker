@@ -6,6 +6,7 @@ import Group from '../models/Group';
 import Expense from '../models/Expense';
 import ExpenseSplit from '../models/ExpenseSplit';
 import User from '../models/User';
+import { notificationService } from './notifications';
 
 const router = Router();
 
@@ -173,7 +174,24 @@ router.post('/request', authenticate, async (req: AuthRequest, res) => {
 
     const populatedSettlement = await Settlement.findById(settlement._id)
       .populate('fromUserId', 'name email')
-      .populate('toUserId', 'name email');
+      .populate('toUserId', 'name email')
+      .populate('groupId', 'name');
+
+    // Send payment request notification
+    if (notificationService && populatedSettlement) {
+      const group = populatedSettlement.groupId as any;
+      const requester = populatedSettlement.fromUserId as any;
+      
+      await notificationService.sendPaymentRequest(
+        req.userId!,
+        toUserId,
+        groupId,
+        settlement._id.toString(),
+        parseFloat(amount),
+        group.name,
+        requester.name
+      );
+    }
 
     res.json(populatedSettlement);
   } catch (error) {
@@ -203,13 +221,17 @@ router.post('/:id/pay', authenticate, async (req: AuthRequest, res) => {
     const { id } = req.params;
     const { paymentMethod, transactionId } = req.body;
 
-    const settlement = await Settlement.findById(id);
+    const settlement = await Settlement.findById(id)
+      .populate('fromUserId', 'name email')
+      .populate('toUserId', 'name email')
+      .populate('groupId', 'name');
+      
     if (!settlement) {
       return res.status(404).json({ error: 'Settlement not found' });
     }
 
     // Verify the user is the one who owes
-    if (settlement.fromUserId.toString() !== req.userId) {
+    if (settlement.fromUserId._id.toString() !== req.userId) {
       return res.status(403).json({ error: 'Unauthorized' });
     }
 
@@ -218,6 +240,22 @@ router.post('/:id/pay', authenticate, async (req: AuthRequest, res) => {
     settlement.transactionId = transactionId;
     settlement.paidAt = new Date();
     await settlement.save();
+
+    // Send payment received notification
+    if (notificationService) {
+      const group = settlement.groupId as any;
+      const payer = settlement.fromUserId as any;
+      const receiver = settlement.toUserId as any;
+      
+      await notificationService.sendPaymentReceived(
+        receiver._id.toString(),
+        payer._id.toString(),
+        group._id.toString(),
+        settlement.amount,
+        group.name,
+        payer.name
+      );
+    }
 
     const populatedSettlement = await Settlement.findById(settlement._id)
       .populate('fromUserId', 'name email')
@@ -273,6 +311,125 @@ router.post('/:id/upi-link', authenticate, async (req: AuthRequest, res) => {
     });
   } catch (error) {
     res.status(400).json({ error: 'Failed to generate UPI link' });
+  }
+});
+
+// Send payment reminders for outstanding balances
+router.post('/group/:groupId/send-reminders', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { groupId } = req.params;
+    const requesterId = req.userId!;
+
+    // Get group details
+    const group = await Group.findById(groupId).populate('members.userId', 'name email');
+    if (!group) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+
+    // Check if requester is a member of the group
+    const isMember = group.members.some(member => member.userId._id.toString() === requesterId);
+    if (!isMember) {
+      return res.status(403).json({ error: 'You are not a member of this group' });
+    }
+
+    // Calculate balances (reuse logic from balances endpoint)
+    const expenses = await Expense.find({ groupId }).populate('userId', 'name email');
+    const splits = await ExpenseSplit.find({
+      expenseId: { $in: expenses.map(e => e._id) }
+    }).populate('userId', 'name email');
+
+    const balances: Record<string, number> = {};
+
+    // Initialize balances for all group members
+    group.members.forEach(member => {
+      const userId = member.userId._id.toString();
+      balances[userId] = 0;
+    });
+
+    // Add what each person paid
+    expenses.forEach(expense => {
+      const payerId = expense.userId._id.toString();
+      if (balances.hasOwnProperty(payerId)) {
+        balances[payerId] += expense.amount;
+      }
+    });
+
+    // Subtract what each person owes
+    splits.forEach(split => {
+      const userId = split.userId._id.toString();
+      if (balances.hasOwnProperty(userId)) {
+        balances[userId] -= split.amount;
+      }
+    });
+
+    // Get paid settlements and adjust balances
+    const paidSettlements = await Settlement.find({
+      groupId,
+      status: 'paid'
+    });
+
+    paidSettlements.forEach(settlement => {
+      const fromUserId = settlement.fromUserId.toString();
+      const toUserId = settlement.toUserId.toString();
+      
+      if (balances.hasOwnProperty(fromUserId) && balances.hasOwnProperty(toUserId)) {
+        balances[fromUserId] += settlement.amount;
+        balances[toUserId] -= settlement.amount;
+      }
+    });
+
+    // Check if requester is owed money (is a creditor)
+    const requesterBalance = Math.round((balances[requesterId] || 0) * 100) / 100;
+    if (requesterBalance <= 0.01) {
+      return res.status(403).json({ 
+        error: 'Only members who are owed money can send payment reminders' 
+      });
+    }
+
+    // Send reminders to users who owe money
+    let remindersSent = 0;
+    
+    if (notificationService) {
+      for (const [userId, balance] of Object.entries(balances)) {
+        const roundedBalance = Math.round(balance * 100) / 100;
+        
+        if (roundedBalance < -0.01) { // User owes money
+          const member = group.members.find(m => m.userId._id.toString() === userId);
+          const userName = (member?.userId as any)?.name || 'Unknown User';
+          const amount = Math.abs(roundedBalance);
+          
+          // Find who they owe money to (simplified - could be multiple people)
+          const creditors = Object.entries(balances)
+            .filter(([creditorId, creditorBalance]) => 
+              creditorId !== userId && Math.round(creditorBalance * 100) / 100 > 0.01
+            )
+            .map(([creditorId]) => {
+              const creditorMember = group.members.find(m => m.userId._id.toString() === creditorId);
+              return (creditorMember?.userId as any)?.name || 'Group Member';
+            });
+          
+          const creditorName = creditors.length > 0 ? creditors[0] : 'group members';
+          
+          await notificationService.sendPaymentReminder(
+            userId,
+            groupId,
+            amount,
+            group.name,
+            creditorName
+          );
+          
+          remindersSent++;
+        }
+      }
+    }
+
+    res.json({ 
+      message: `Payment reminders sent to ${remindersSent} members`,
+      remindersSent 
+    });
+  } catch (error) {
+    console.error('Error sending payment reminders:', error);
+    res.status(500).json({ error: 'Failed to send payment reminders' });
   }
 });
 

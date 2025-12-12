@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import GoogleLoginButton from '../components/GoogleLoginButton';
 
 const Register = () => {
   const [email, setEmail] = useState('');
@@ -110,6 +111,16 @@ const Register = () => {
               )}
             </button>
           </form>
+
+          {/* Divider */}
+          <div className="mt-6 mb-6 flex items-center">
+            <div className="flex-1 border-t border-gray-300"></div>
+            <span className="px-4 text-gray-500 text-sm">or</span>
+            <div className="flex-1 border-t border-gray-300"></div>
+          </div>
+
+          {/* Google Login */}
+          <GoogleLoginButton onError={setError} />
 
           <div className="mt-8 text-center">
             <p className="text-gray-600">

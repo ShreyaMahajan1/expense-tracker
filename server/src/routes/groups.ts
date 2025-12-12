@@ -81,6 +81,53 @@ router.post('/:id/members', authenticate, async (req: AuthRequest, res) => {
   }
 });
 
+// Remove member from group
+router.delete('/:id/members/:memberId', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { id, memberId } = req.params;
+
+    const group = await Group.findById(id);
+    if (!group) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+
+    // Check if requester is admin or removing themselves
+    const requesterMember = group.members.find(m => m.userId.toString() === req.userId);
+    const targetMember = group.members.find(m => m.userId.toString() === memberId);
+    
+    if (!requesterMember) {
+      return res.status(403).json({ error: 'You are not a member of this group' });
+    }
+
+    if (!targetMember) {
+      return res.status(404).json({ error: 'Member not found in group' });
+    }
+
+    // Only allow removal if requester is admin
+    if (requesterMember.role !== 'admin') {
+      return res.status(403).json({ error: 'Only admins can remove members from the group' });
+    }
+
+    // Don't allow removing the last admin
+    const adminCount = group.members.filter(m => m.role === 'admin').length;
+    if (targetMember.role === 'admin' && adminCount === 1) {
+      return res.status(400).json({ error: 'Cannot remove the last admin from the group' });
+    }
+
+    // Remove the member
+    const updatedGroup = await Group.findByIdAndUpdate(
+      id,
+      { $pull: { members: { userId: memberId } } },
+      { new: true }
+    ).populate('members.userId', 'name email');
+
+    res.json(updatedGroup);
+  } catch (error: any) {
+    console.error('Remove member error:', error);
+    res.status(400).json({ error: error.message || 'Failed to remove member' });
+  }
+});
+
 router.post('/:id/expenses', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;

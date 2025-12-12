@@ -146,6 +146,21 @@ const GroupDetails: React.FC = () => {
     }
   };
 
+  const handleRemoveMember = async (memberId: string, memberName: string) => {
+    if (!groupId) return;
+    
+    const confirmed = window.confirm(`Are you sure you want to remove ${memberName} from the group?`);
+    if (!confirmed) return;
+
+    try {
+      await axios.delete(`/api/groups/${groupId}/members/${memberId}`);
+      fetchGroupData(groupId);
+      showError(`${memberName} has been removed from the group`);
+    } catch (error: any) {
+      showError(error.response?.data?.error || 'Failed to remove member');
+    }
+  };
+
   const handleAddGroupExpense = async () => {
     if (!groupId || !group || !expenseData.amount || !expenseData.description) return;
 
@@ -170,6 +185,47 @@ const GroupDetails: React.FC = () => {
       fetchGroupData(groupId);
     } catch (error: any) {
       showError(error.response?.data?.error || 'Failed to add expense');
+    }
+  };
+
+  // Get current user's role in the group
+  const getCurrentUserRole = (): string => {
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId || !group) return 'member';
+    
+    const currentMember = group.members.find(m => m.userId._id === currentUserId);
+    return currentMember?.role || 'member';
+  };
+
+  // Check if current user is owed money (creditor)
+  const isCurrentUserCreditor = (): boolean => {
+    const currentUserId = getCurrentUserId();
+    if (!currentUserId || !balances) return false;
+    
+    const userBalance = balances.find(b => b.userId === currentUserId);
+    return userBalance?.status === 'owed' && userBalance.balance > 0.01;
+  };
+
+  // Check if there are any outstanding debts in the group
+  const hasOutstandingDebts = (): boolean => {
+    if (!balances) return false;
+    return balances.some(b => b.status === 'owes' && b.balance < -0.01);
+  };
+
+  const sendPaymentReminders = async () => {
+    if (!groupId) return;
+
+    try {
+      const response = await axios.post(`/api/settlements/group/${groupId}/send-reminders`);
+      const { remindersSent } = response.data;
+      
+      if (remindersSent > 0) {
+        showError(`✅ Payment reminders sent to ${remindersSent} member${remindersSent > 1 ? 's' : ''}!`);
+      } else {
+        showError('ℹ️ No payment reminders needed - all balances are settled!');
+      }
+    } catch (error: any) {
+      showError(error.response?.data?.error || 'Failed to send payment reminders');
     }
   };
 
@@ -237,35 +293,88 @@ const GroupDetails: React.FC = () => {
                 {value === TABS.SETTLEMENTS && 'Payments'}
               </button>
             ))}
+            <button
+              onClick={() => setActiveTab('members')}
+              className={`flex-1 px-4 py-3 text-sm font-medium ${
+                activeTab === 'members'
+                  ? 'border-b-2 border-blue-500 text-blue-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Members ({group?.members.length || 0})
+            </button>
           </div>
 
           <div className="p-6">
             {/* Simple Action Buttons */}
             <div className="flex flex-wrap gap-3 mb-6">
-              <button
-                onClick={() => {
-                  setShowReceiptScanner(!showReceiptScanner);
-                  setShowAddExpenseForm(false);
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
-              >
-                {showReceiptScanner ? 'Cancel' : 'Scan Receipt'}
-              </button>
-              <button
-                onClick={() => {
-                  setShowAddExpenseForm(!showAddExpenseForm);
-                  setShowReceiptScanner(false);
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
-              >
-                {showAddExpenseForm ? 'Cancel' : 'Add Expense'}
-              </button>
-              <button
-                onClick={() => setShowAddMemberForm(!showAddMemberForm)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
-              >
-                {showAddMemberForm ? 'Cancel' : 'Add Member'}
-              </button>
+              {/* Show Scan Receipt and Add Expense only if group has members */}
+              {group && group.members.length > 1 && (
+                <>
+                  <button
+                    onClick={() => {
+                      setShowReceiptScanner(!showReceiptScanner);
+                      setShowAddExpenseForm(false);
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
+                  >
+                    {showReceiptScanner ? 'Cancel' : 'Scan Receipt'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowAddExpenseForm(!showAddExpenseForm);
+                      setShowReceiptScanner(false);
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
+                  >
+                    {showAddExpenseForm ? 'Cancel' : 'Add Expense'}
+                  </button>
+                </>
+              )}
+              
+              {/* Add Member button - only for admins */}
+              {getCurrentUserRole() === 'admin' && (
+                <button
+                  onClick={() => setShowAddMemberForm(!showAddMemberForm)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
+                >
+                  {showAddMemberForm ? 'Cancel' : 'Add Member'}
+                </button>
+              )}
+              
+              {/* Show hint when no other members */}
+              {group && group.members.length === 1 && getCurrentUserRole() === 'admin' && (
+                <div className="text-sm text-blue-600 italic px-4 py-2 bg-blue-50 rounded-md">
+                  💡 Add members to unlock expense tracking and receipt scanning
+                </div>
+              )}
+              
+              {/* Show message for non-admins when no members */}
+              {group && group.members.length === 1 && getCurrentUserRole() !== 'admin' && (
+                <div className="text-sm text-gray-600 italic px-4 py-2 bg-gray-50 rounded-md">
+                  👑 Ask the group admin to add more members
+                </div>
+              )}
+              {activeTab === TABS.BALANCES && (
+                <>
+                  {isCurrentUserCreditor() && hasOutstandingDebts() ? (
+                    <button
+                      onClick={sendPaymentReminders}
+                      className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-md font-medium flex items-center gap-2"
+                      title="Send payment reminders to members who owe you money"
+                    >
+                      <span>💸</span>
+                      Send Reminders
+                    </button>
+                  ) : (
+                    !hasOutstandingDebts() && (
+                      <div className="text-sm text-gray-500 italic px-4 py-2">
+                        ✅ All balances are settled - no reminders needed
+                      </div>
+                    )
+                  )}
+                </>
+              )}
             </div>
 
             {/* Receipt Scanner */}
@@ -389,8 +498,8 @@ const GroupDetails: React.FC = () => {
               </div>
             )}
 
-            {/* Add Member Form */}
-            {showAddMemberForm && (
+            {/* Add Member Form - only for admins */}
+            {showAddMemberForm && getCurrentUserRole() === 'admin' && (
               <div className="bg-white rounded-lg shadow border border-slate-200 p-6 mb-6">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -627,6 +736,82 @@ const GroupDetails: React.FC = () => {
                     </div>
                     <p className="text-gray-500 text-xl mb-2">No payment history</p>
                     <p className="text-gray-400">Payments will appear here once made</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Members Tab */}
+            {activeTab === 'members' && (
+              <div className="space-y-4">
+                {group?.members.map((member) => {
+                  const isCurrentUser = member.userId._id === getCurrentUserId();
+                  const isAdmin = member.role === 'admin';
+                  const canRemove = !isAdmin || group.members.filter(m => m.role === 'admin').length > 1;
+                  
+                  return (
+                    <div
+                      key={member.userId._id}
+                      className="bg-white rounded-lg shadow border border-slate-200 p-4"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 font-bold text-lg">
+                            {member.userId.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-semibold text-gray-900">
+                                {member.userId.name}
+                              </h3>
+                              {isCurrentUser && (
+                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">You</span>
+                              )}
+                              {isAdmin && (
+                                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Admin</span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-600">{member.userId.email}</p>
+                            {member.userId.upiId && (
+                              <p className="text-xs text-gray-500 font-mono">
+                                UPI: {member.userId.upiId}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Remove button - only show to admins */}
+                        {getCurrentUserRole() === 'admin' && canRemove && (
+                          <button
+                            onClick={() => handleRemoveMember(member.userId._id, member.userId.name)}
+                            className="text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                            title={`Remove ${member.userId.name} from group`}
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                
+                {/* Add member hint when no members */}
+                {group?.members.length === 1 && (
+                  <div className="text-center py-8 bg-blue-50 rounded-lg border-2 border-dashed border-blue-200">
+                    <div className="text-4xl mb-3">👥</div>
+                    <p className="text-blue-800 font-medium mb-2">Add members to start splitting expenses!</p>
+                    <p className="text-blue-600 text-sm">Use the "Add Member" button above to invite people to your group.</p>
+                  </div>
+                )}
+                
+                {/* Admin info */}
+                {getCurrentUserRole() !== 'admin' && group?.members.length > 1 && (
+                  <div className="text-center py-4 bg-gray-50 rounded-lg">
+                    <p className="text-sm text-gray-600">
+                      👑 Only group admins can manage members
+                    </p>
                   </div>
                 )}
               </div>

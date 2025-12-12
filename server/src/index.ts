@@ -7,6 +7,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import mongoSanitize from 'express-mongo-sanitize';
 import hpp from 'hpp';
+import { xssProtection } from './middleware/xssProtection';
 import mongoose from 'mongoose';
 import { connectDB } from './config/database';
 import authRoutes from './routes/auth';
@@ -104,12 +105,22 @@ app.use(cors({
 // Handle preflight requests
 app.options('*', cors());
 
-// Security Middleware - Mobile-friendly configuration
+// Security Middleware - Firebase-friendly configuration
 app.use(helmet({
   crossOriginEmbedderPolicy: false,
   crossOriginResourcePolicy: { policy: "cross-origin" },
-  crossOriginOpenerPolicy: { policy: "unsafe-none" },
-  contentSecurityPolicy: false, // Disable CSP for mobile compatibility
+  crossOriginOpenerPolicy: false, // Disable COOP for Firebase popups
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://apis.google.com", "https://www.gstatic.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "https://identitytoolkit.googleapis.com", "https://securetoken.googleapis.com"],
+      frameSrc: ["https://accounts.google.com"]
+    }
+  },
   hsts: {
     maxAge: 31536000,
     includeSubDomains: true,
@@ -118,6 +129,7 @@ app.use(helmet({
 })); // Set security HTTP headers
 app.use(mongoSanitize()); // Sanitize data against NoSQL injection
 app.use(hpp()); // Prevent HTTP parameter pollution
+app.use(xssProtection); // Clean user input from malicious HTML
 
 // Rate limiting - More generous for development
 const limiter = rateLimit({
@@ -206,7 +218,7 @@ app.get('/health', (req, res) => {
       origin: req.headers.origin,
       userAgent: req.headers['user-agent'],
       method: req.method,
-      ip: req.ip || req.connection.remoteAddress
+      ip: req.ip || req.socket.remoteAddress
     }
   });
 });

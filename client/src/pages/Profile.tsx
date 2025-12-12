@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import axios from '../config/axios';
 import Navbar from '../components/Navbar';
+import NotificationSettings from '../components/NotificationSettings';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../utils/toast';
 import { maskUpiId, validateUpiId, formatUpiId } from '../utils/upiUtils';
@@ -241,6 +242,9 @@ const Profile = () => {
                     placeholder="+91 9876543210"
                   />
                 </div>
+
+                {/* Notification Settings */}
+                <NotificationSettings />
 
                 <div className="flex gap-3 mt-6">
                   <button

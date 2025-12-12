@@ -1,200 +1,248 @@
-# Smart Expense Tracker
+# MoneyFlow - Smart Expense Tracker
 
-A full-stack expense tracking application with group bill splitting, budget management, and UPI payment integration.
+A comprehensive full-stack expense tracking application with Firebase authentication, group expense splitting, UPI payments, and real-time notifications.
 
-## ✨ Features
+## 🚀 Features
 
-### 🔐 Authentication & Security
-- JWT-based authentication with bcrypt password hashing
-- Rate limiting (100 requests/15min, 5 login attempts/15min)
-- Helmet.js security headers
-- NoSQL injection prevention
-- XSS protection
-- Input sanitization
+### Core Features
+- **Firebase Authentication**: Secure Google OAuth login with Firebase
+- **Expense Tracking**: Add, edit, delete, and categorize personal expenses
+- **Income Management**: Track multiple income sources and categories
+- **Budget Management**: Set monthly budgets with real-time tracking and alerts
+- **Analytics Dashboard**: Visual insights with charts and spending patterns
 
-### 💰 Expense Management
-- Add, edit, delete expenses with categories
-- Multiple categories: Food, Travel, Rent, Bills, Shopping, Entertainment, Health, Education, Other
-- Payment method tracking: Cash, UPI, Card, Net Banking, Wallet
-- Receipt image upload
-- Notes and descriptions
-- Date tracking
+### Advanced Features
+- **Group Expense Splitting**: Create groups, add members, and split expenses equally
+- **Smart Member Management**: Admin-controlled member addition/removal with role-based permissions
+- **UPI Payment Integration**: Direct UPI payments with QR code generation
+- **Real-time Native Notifications**: Browser/phone notifications for payment reminders and budget alerts
+- **Receipt Scanning**: OCR-powered receipt scanning with automatic expense extraction and form population
+- **Mobile Responsive**: Optimized for all devices with touch-friendly interface
 
-### 💵 Income Tracking
-- Track multiple income sources
-- Categories: Salary, Freelance, Investment, Gift, Other
-- Monthly income overview
+### Smart UI Features
+- **Conditional Button Display**: Expense/receipt buttons only appear when group has members
+- **Admin-Only Controls**: Only group admins can manage members and send payment reminders
+- **Real-time Payment Reminders**: Native browser notifications sent to users who owe money
+- **Auto-form Population**: Receipt scanning automatically fills expense forms
 
-### 🎯 Budget Management
-- Set monthly spending limits per category
-- Real-time budget alerts when limits are exceeded
-- Budget vs actual spending comparison
-- Visual progress indicators
-
-### 📊 Analytics Dashboard
-- Monthly income vs expenses comparison
-- Category-wise spending breakdown (Pie chart)
-- Payment method analysis (Bar chart)
-- Savings rate calculation
-- Total balance tracking
-
-### 👥 Group Expense Splitting
-- Create groups with multiple members
-- Add group expenses with automatic equal split
-- Real-time balance calculation (who owes whom)
-- Settlement tracking
-- Group expense history
-
-### 💳 UPI Payment Integration
-- Direct peer-to-peer UPI payments
-- Set your UPI ID in profile
-- Generate UPI payment links
-- QR code generation for easy payments
-- Manual payment verification with transaction ID
-- Settlement history tracking
-
-### 🔔 Real-time Features
-- Socket.io integration for live group updates
-- Instant notifications for group activities
-
-### 📱 Responsive Design
-- Mobile-first design with Tailwind CSS
-- Works seamlessly on all devices
-- Clean and intuitive UI
+### Security & Performance
+- **Firebase Security**: Google OAuth with Firebase Admin SDK verification
+- **Role-based Authorization**: Admin/member permissions with server-side validation
+- **Rate Limiting**: Protection against abuse with configurable limits
+- **Input Sanitization**: MongoDB injection and XSS protection
+- **CORS Configuration**: Secure cross-origin resource sharing
+- **Environment-based Configuration**: Separate configs for development and production
 
 ## 🛠️ Tech Stack
 
 ### Frontend
-- React 18 + TypeScript
-- Vite
-- Tailwind CSS
-- React Router v6
-- Axios
-- Recharts (analytics charts)
-- QRCode.react (QR code generation)
-- Socket.io-client (real-time updates)
+- **React 18** with TypeScript
+- **Vite** for fast development and building
+- **Firebase** for authentication
+- **Tailwind CSS** for styling
+- **React Router** for navigation
+- **Axios** for API communication
+- **React Toastify** for notifications
+- **Recharts** for data visualization
+- **Tesseract.js** for OCR functionality
+- **QRCode.react** for QR code generation
 
 ### Backend
-- Node.js + Express
-- TypeScript
-- MongoDB Atlas
-- Mongoose ODM
-- JWT authentication
-- Socket.io (real-time)
-- Multer (file uploads)
-- Helmet.js (security)
-- Express Rate Limit
-- Express Mongo Sanitize
+- **Node.js** with Express.js
+- **TypeScript** for type safety
+- **Firebase Admin SDK** for authentication verification
+- **MongoDB** with Mongoose ODM
+- **Socket.io** for real-time communication
+- **JWT** for session management
+- **Bcrypt** for password hashing
+- **Multer** for file uploads
+- **Helmet** for security headers
+- **Express Rate Limit** for API protection
 
-## 📁 Project Structure
-
-```
-expense-tracker/
-├── client/                 # React frontend
-│   ├── src/
-│   │   ├── components/    # Navbar, PrivateRoute
-│   │   ├── pages/         # Dashboard, Expenses, Income, Budget, Groups, Profile
-│   │   ├── context/       # AuthContext
-│   │   └── App.tsx
-│   ├── public/            # robots.txt, sitemap.xml
-│   └── package.json
-├── server/                # Node.js backend
-│   ├── src/
-│   │   ├── models/        # Mongoose schemas (User, Expense, Income, Budget, Group, Settlement)
-│   │   ├── routes/        # API routes
-│   │   ├── middleware/    # Auth, security
-│   │   ├── config/        # Database, env validation
-│   │   └── index.ts
-│   ├── uploads/           # Receipt images
-│   └── package.json
-├── SECURITY.md            # Security documentation
-└── README.md
-```
-
-## 🚀 Getting Started
+## 📦 Installation
 
 ### Prerequisites
-- Node.js 18+
-- MongoDB Atlas account (free tier works)
-- npm or yarn
+- Node.js (v18 or higher)
+- MongoDB Atlas account
+- Firebase project with Google OAuth enabled
+- Git
 
-### Installation
+### Backend Setup
+1. Clone the repository:
+```bash
+git clone https://github.com/ShreyaMahajan1/expense-tracker.git
+cd expense-tracker/server
+```
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/ShreyaMahajan1/expense-tracker.git
-   cd expense-tracker
-   ```
+2. Install dependencies:
+```bash
+npm install
+```
 
-2. **Install dependencies**
-   ```bash
-   # Install server dependencies
-   cd server
-   npm install
+3. Create environment file:
+```bash
+cp .env.example .env
+```
 
-   # Install client dependencies
-   cd ../client
-   npm install
-   ```
+4. Configure environment variables in `.env`:
+```env
+MONGODB_URI=your_mongodb_connection_string
+JWT_SECRET=your_jwt_secret_key
+PORT=5000
+NODE_ENV=development
+CLIENT_URL=http://localhost:5173
+FIREBASE_PROJECT_ID=your_firebase_project_id
+FIREBASE_CLIENT_EMAIL=your_firebase_client_email
+FIREBASE_PRIVATE_KEY=your_firebase_private_key
+```
 
-3. **Set up environment variables**
+5. Start the development server:
+```bash
+npm run dev
+```
 
-   **Server (.env):**
-   ```env
-   PORT=5000
-   MONGODB_URI=your_mongodb_atlas_connection_string
-   JWT_SECRET=your_super_secret_jwt_key_min_32_characters
-   CLIENT_URL=http://localhost:5173
-   ```
+### Frontend Setup
+1. Navigate to client directory:
+```bash
+cd ../client
+```
 
-   **Client (.env):**
-   ```env
-   VITE_API_URL=http://localhost:5000
-   ```
+2. Install dependencies:
+```bash
+npm install
+```
 
-4. **Start development servers**
-   ```bash
-   # Terminal 1 - Backend
-   cd server
-   npm run dev
+3. Create environment file:
+```bash
+cp .env.example .env
+```
 
-   # Terminal 2 - Frontend
-   cd client
-   npm run dev
-   ```
+4. Configure environment variables in `.env`:
+```env
+VITE_API_URL=http://localhost:5000
+VITE_SOCKET_URL=http://localhost:5000
+VITE_FIREBASE_API_KEY=your_firebase_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_firebase_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+```
 
-5. **Access the application**
-   - Frontend: http://localhost:5173
-   - Backend: http://localhost:5000
+5. Start the development server:
+```bash
+npm run dev
+```
 
-## 🔒 Security
+## 🔥 Firebase Setup
 
-This application implements multiple security measures:
-- JWT authentication with secure token handling
-- Password hashing with bcrypt
-- Rate limiting to prevent abuse
-- Input sanitization against NoSQL injection
-- XSS protection
-- Security headers with Helmet.js
+1. Create a Firebase project at https://console.firebase.google.com/
+2. Enable Google Authentication in Authentication > Sign-in method
+3. Add your domain to authorized domains
+4. Generate a service account key for Firebase Admin SDK
+5. Configure environment variables with Firebase credentials
 
-See [SECURITY.md](SECURITY.md) for detailed security documentation.
+## 🚀 Deployment
+
+### Backend (Render)
+1. Connect your GitHub repository to Render
+2. Set environment variables in Render dashboard:
+   - All variables from `.env.production`
+   - Firebase credentials (Project ID, Client Email, Private Key)
+3. Deploy with build command: `npm run build`
+4. Start command: `npm start`
+
+### Frontend (Vercel)
+1. Connect your GitHub repository to Vercel
+2. Set environment variables in Vercel dashboard:
+   - All VITE_ variables from `.env.production`
+   - Firebase client configuration
+3. Deploy with build command: `npm run build`
+4. Output directory: `dist`
+
+## 🔧 Environment Variables
+
+### Backend (.env.production)
+```env
+MONGODB_URI=mongodb_connection_string
+JWT_SECRET=jwt_secret_key
+PORT=5000
+NODE_ENV=production
+CLIENT_URL=https://your-frontend-domain.com
+FIREBASE_PROJECT_ID=your_project_id
+FIREBASE_CLIENT_EMAIL=your_client_email
+FIREBASE_PRIVATE_KEY=your_private_key
+```
+
+### Frontend (.env.production)
+```env
+VITE_API_URL=https://your-backend-domain.com
+VITE_SOCKET_URL=https://your-backend-domain.com
+VITE_FIREBASE_API_KEY=your_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+```
+
+## 📱 Usage
+
+1. **Google Login**: Sign in with your Google account via Firebase
+2. **Add Expenses**: Track your daily expenses with categories
+3. **Set Budgets**: Create monthly budgets and get native browser alerts
+4. **Create Groups**: Split expenses with friends and family (admin creates, adds members)
+5. **Scan Receipts**: Upload receipts for automatic expense form population
+6. **Send Payment Reminders**: Admins can send real-time native notifications to debtors
+7. **Make UPI Payments**: Direct UPI payments with QR codes and mobile app integration
+8. **Manage Members**: Admins control group membership and permissions
+9. **View Analytics**: Monitor spending patterns and trends with real-time updates
+
+## 🔒 Security Features
+
+- Firebase Google OAuth authentication
+- Firebase Admin SDK token verification
+- JWT-based session management
+- Role-based authorization (Admin/Member permissions)
+- Server-side permission validation for all member operations
+- Rate limiting on API endpoints
+- Input sanitization and validation
+- CORS protection
+- Security headers with Helmet
+- MongoDB injection prevention
+- Admin-only controls for sensitive operations
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Commit changes: `git commit -m 'Add feature'`
+4. Push to branch: `git push origin feature-name`
+5. Submit a pull request
 
-## 📝 License
+## 📄 License
 
-MIT
+This project is licensed under the MIT License.
 
-## 👤 Author
 
-**Shreya Mahajan**
-- GitHub: [@ShreyaMahajan1](https://github.com/ShreyaMahajan1)
+## 🔮 Future Enhancements
 
-## 🙏 Acknowledgments
+- Automated payment verification
+- Multi-currency support
+- Expense categories customization
+- Data export functionality
+- Advanced analytics and reporting
+- Social login with other providers (Facebook, Apple)
+- Push notifications for mobile apps
+- Recurring expense automation
+- Advanced OCR with multiple receipt formats
+- Group expense templates and categories
 
-- Built with React, Node.js, and MongoDB
-- UI components styled with Tailwind CSS
-- Charts powered by Recharts
-- Real-time updates with Socket.io
+## 🌐 Live Demo
+
+- **Frontend**: https://expense-tracker-client-shreya.vercel.app
+- **Backend**: https://expense-tracker-server-shreya.onrender.com
+
+## 📞 Support
+
+For support, email mahajanshreya792@gmail.com or create an issue on GitHub.

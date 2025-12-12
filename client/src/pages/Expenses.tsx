@@ -69,7 +69,8 @@ const Expenses = () => {
     });
     setScannedItems(data.items);
     setShowReceiptScanner(false);
-    showSuccess('Receipt data extracted! Review and save your expense.');
+    setShowForm(true); // Auto-open the add expense form
+    showSuccess('Receipt scanned! Review the details and save your expense.');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

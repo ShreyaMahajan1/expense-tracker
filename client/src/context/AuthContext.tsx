@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import axios from '../config/axios';
+import { secureTokenStorage } from '../utils/security';
 
 interface User {
   id: string;
@@ -11,6 +12,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (email: string, password: string) => Promise<void>;
+  loginWithFirebase: (idToken: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => void;
   updateUser: (userData: Partial<User>) => void;
@@ -45,6 +47,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
   };
 
+  const loginWithFirebase = async (idToken: string) => {
+    try {
+      const response = await axios.post('/api/auth/firebase', { idToken });
+      
+      const { token, user } = response.data;
+      
+      if (!token || !user) {
+        throw new Error('Invalid response from server');
+      }
+      
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+      setToken(token);
+      setUser(user);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    } catch (error: any) {
+      throw error; // Re-throw to let the component handle it
+    }
+  };
+
   const register = async (email: string, password: string, name: string) => {
     const response = await axios.post('/api/auth/register', { email, password, name });
     const { token, user } = response.data;
@@ -72,7 +94,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout, updateUser, loading }}>
+    <AuthContext.Provider value={{ user, token, login, loginWithFirebase, register, logout, updateUser, loading }}>
       {children}
     </AuthContext.Provider>
   );

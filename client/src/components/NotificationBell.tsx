@@ -2,14 +2,19 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axios from '../config/axios';
 import { io, Socket } from 'socket.io-client';
+import { notificationService } from '../utils/notificationService';
 
 interface Notification {
   _id: string;
-  type: 'budget_warning' | 'budget_exceeded' | 'budget_critical';
+  type: 'budget_warning' | 'budget_exceeded' | 'budget_critical' | 'payment_reminder' | 'payment_request' | 'payment_received';
   title: string;
   message: string;
-  category: string;
-  percentage: number;
+  category?: string;
+  percentage?: number;
+  groupId?: string;
+  settlementId?: string;
+  amount?: number;
+  fromUser?: string;
   isRead: boolean;
   createdAt: string;
 }
@@ -67,7 +72,77 @@ const NotificationBell = () => {
       // Add to notifications list
       setNotifications(prev => [notification, ...prev]);
       
-      // Show toast notification
+      // Show native notification
+      if (notification.type === 'budget_warning') {
+        notificationService.showBudgetAlert(
+          notification.category,
+          parseFloat(notification.percentage),
+          0, // Will be calculated from percentage
+          'warning'
+        );
+      } else if (notification.type === 'budget_critical') {
+        notificationService.showBudgetAlert(
+          notification.category,
+          parseFloat(notification.percentage),
+          0,
+          'critical'
+        );
+      } else if (notification.type === 'budget_exceeded') {
+        notificationService.showBudgetAlert(
+          notification.category,
+          parseFloat(notification.percentage),
+          0,
+          'exceeded'
+        );
+      }
+      
+      // Show toast notification as fallback
+      setShowToast(notification);
+      setTimeout(() => setShowToast(null), 5000);
+    });
+
+    // Payment notification listeners
+    newSocket.on('payment_reminder', (notification: any) => {
+      setNotifications(prev => [notification, ...prev]);
+      
+      // Show native notification
+      notificationService.showPaymentReminder(
+        notification.amount || 0,
+        notification.creditorName || 'group member',
+        notification.groupName || 'group',
+        notification.groupId || ''
+      );
+      
+      setShowToast(notification);
+      setTimeout(() => setShowToast(null), 5000);
+    });
+
+    newSocket.on('payment_request', (notification: any) => {
+      setNotifications(prev => [notification, ...prev]);
+      
+      // Show native notification
+      notificationService.showPaymentRequest(
+        notification.amount || 0,
+        notification.fromUser || 'Someone',
+        notification.groupName || 'group',
+        notification.groupId || ''
+      );
+      
+      setShowToast(notification);
+      setTimeout(() => setShowToast(null), 5000);
+    });
+
+    newSocket.on('payment_received', (notification: any) => {
+      setNotifications(prev => [notification, ...prev]);
+      
+      // Show native notification
+      notificationService.showPaymentReceived(
+        notification.amount || 0,
+        notification.fromUser || 'Someone',
+        notification.groupName || 'group',
+        notification.groupId || ''
+      );
+      
       setShowToast(notification);
       setTimeout(() => setShowToast(null), 5000);
     });
@@ -109,6 +184,9 @@ const NotificationBell = () => {
       case 'budget_exceeded': return '🚨';
       case 'budget_critical': return '⚠️';
       case 'budget_warning': return '💡';
+      case 'payment_reminder': return '💸';
+      case 'payment_request': return '💰';
+      case 'payment_received': return '✅';
       default: return '📢';
     }
   };
@@ -118,7 +196,10 @@ const NotificationBell = () => {
       case 'budget_exceeded': return 'text-red-700 bg-red-100 border-red-300';
       case 'budget_critical': return 'text-orange-700 bg-orange-100 border-orange-300';
       case 'budget_warning': return 'text-yellow-700 bg-yellow-100 border-yellow-300';
-      default: return 'text-blue-700 bg-blue-100 border-blue-300';
+      case 'payment_reminder': return 'text-red-700 bg-red-100 border-red-300';
+      case 'payment_request': return 'text-blue-700 bg-blue-100 border-blue-300';
+      case 'payment_received': return 'text-green-700 bg-green-100 border-green-300';
+      default: return 'text-gray-700 bg-gray-100 border-gray-300';
     }
   };
 

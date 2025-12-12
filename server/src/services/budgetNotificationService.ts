@@ -18,6 +18,133 @@ export class BudgetNotificationService {
     this.io = io;
   }
 
+  // Payment reminder methods
+  async sendPaymentReminder(
+    userId: string, 
+    groupId: string, 
+    amount: number, 
+    groupName: string,
+    creditorName: string
+  ): Promise<void> {
+    try {
+      const notification = await Notification.create({
+        userId,
+        type: 'payment_reminder',
+        title: '💸 Payment Reminder',
+        message: `You owe ₹${amount.toFixed(2)} to ${creditorName} in group "${groupName}". Please settle your payment.`,
+        groupId,
+        amount
+      });
+
+      // Send real-time notification with group details
+      this.io.to(`user-${userId}`).emit('payment_reminder', {
+        id: notification._id,
+        type: 'payment_reminder',
+        title: notification.title,
+        message: notification.message,
+        groupId,
+        groupName,
+        amount,
+        creditorName,
+        timestamp: notification.createdAt
+      });
+
+      console.log(`Payment reminder sent to user ${userId} for ₹${amount}`);
+    } catch (error) {
+      console.error('Error sending payment reminder:', error);
+    }
+  }
+
+  async sendPaymentRequest(
+    fromUserId: string,
+    toUserId: string,
+    groupId: string,
+    settlementId: string,
+    amount: number,
+    groupName: string,
+    requesterName: string
+  ): Promise<void> {
+    try {
+      const notification = await Notification.create({
+        userId: toUserId,
+        type: 'payment_request',
+        title: '💰 Payment Request',
+        message: `${requesterName} has requested ₹${amount.toFixed(2)} from you in group "${groupName}".`,
+        groupId,
+        settlementId,
+        amount,
+        fromUserId,
+        toUserId
+      });
+
+      // Send real-time notification
+      this.io.to(`user-${toUserId}`).emit('payment_request', {
+        id: notification._id,
+        type: 'payment_request',
+        title: notification.title,
+        message: notification.message,
+        groupId,
+        groupName,
+        settlementId,
+        amount,
+        fromUser: requesterName,
+        timestamp: notification.createdAt
+      });
+
+      console.log(`Payment request sent from ${fromUserId} to ${toUserId} for ₹${amount}`);
+    } catch (error) {
+      console.error('Error sending payment request:', error);
+    }
+  }
+
+  async sendPaymentReceived(
+    userId: string,
+    fromUserId: string,
+    groupId: string,
+    amount: number,
+    groupName: string,
+    payerName: string
+  ): Promise<void> {
+    try {
+      const notification = await Notification.create({
+        userId,
+        type: 'payment_received',
+        title: '✅ Payment Received',
+        message: `You received ₹${amount.toFixed(2)} from ${payerName} in group "${groupName}".`,
+        groupId,
+        amount,
+        fromUserId
+      });
+
+      // Send real-time notification
+      this.io.to(`user-${userId}`).emit('payment_received', {
+        id: notification._id,
+        type: 'payment_received',
+        title: notification.title,
+        message: notification.message,
+        groupId,
+        groupName,
+        amount,
+        fromUser: payerName,
+        timestamp: notification.createdAt
+      });
+
+      console.log(`Payment received notification sent to user ${userId} for ₹${amount}`);
+    } catch (error) {
+      console.error('Error sending payment received notification:', error);
+    }
+  }
+
+  async checkAndSendPaymentReminders(groupId: string): Promise<void> {
+    try {
+      // This would be called periodically or when balances change
+      // Implementation would check group balances and send reminders for outstanding debts
+      console.log(`Checking payment reminders for group ${groupId}`);
+    } catch (error) {
+      console.error('Error checking payment reminders:', error);
+    }
+  }
+
   async checkBudgetAndNotify(userId: string, category: string, newExpenseAmount: number): Promise<void> {
     try {
       const currentDate = new Date();
