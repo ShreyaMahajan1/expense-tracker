@@ -17,26 +17,14 @@
       }
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "server/dist/index.js"
+      "source": "/api/(.*)",
+      "destination": "server/dist/index.js"
     },
     {
-      "src": "/health",
-      "dest": "server/dist/index.js"
-    },
-    {
-      "src": "/assets/(.*)",
-      "dest": "client/dist/assets/$1"
-    },
-    {
-      "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot))",
-      "dest": "client/dist/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "client/dist/index.html"
+      "source": "/health",
+      "destination": "server/dist/index.js"
     }
   ],
   "headers": [
