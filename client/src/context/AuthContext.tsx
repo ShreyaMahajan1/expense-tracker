@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import axios from '../config/axios';
-import { secureTokenStorage } from '../utils/security';
 
 interface User {
   id: string;
