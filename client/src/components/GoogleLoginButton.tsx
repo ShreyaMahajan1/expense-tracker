@@ -36,6 +36,10 @@ const GoogleLoginButton: React.FC<GoogleLoginButtonProps> = ({ onError }) => {
         errorMessage = 'Login cancelled by user';
       } else if (error.code === 'auth/popup-blocked') {
         errorMessage = 'Popup blocked by browser. Please allow popups and try again.';
+      } else if (error.code === 'auth/unauthorized-domain') {
+        errorMessage = 'This domain is not authorized for Firebase authentication. Please contact support.';
+      } else if (error.code === 'auth/operation-not-allowed') {
+        errorMessage = 'Google sign-in is not enabled. Please contact support.';
       } else if (error.code === 'auth/network-request-failed') {
         errorMessage = 'Network error. Please check your connection and try again.';
       } else if (error.response?.status === 400) {
@@ -58,7 +62,7 @@ const GoogleLoginButton: React.FC<GoogleLoginButtonProps> = ({ onError }) => {
     <button
       onClick={handleGoogleLogin}
       disabled={isLoading}
-      className="w-full bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-700 py-3 px-4 rounded-2xl font-medium transition-all duration-300 flex items-center justify-center gap-3 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+      className="w-full bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-700 py-3 sm:py-3.5 px-3 sm:px-4 rounded-xl sm:rounded-2xl font-medium transition-all duration-300 flex items-center justify-center gap-2 sm:gap-3 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base min-h-[44px]"
     >
       {isLoading ? (
         <>

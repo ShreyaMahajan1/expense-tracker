@@ -68,24 +68,24 @@ const UpiReminder: React.FC = () => {
       onClick={handleDismiss}
     >
       <div 
-        className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 relative overflow-hidden"
+        className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl max-w-md w-full p-4 sm:p-6 relative overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Decorative background */}
-        <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-blue-400/20 to-purple-500/20 rounded-full -mr-10 -mt-10"></div>
+        <div className="absolute top-0 right-0 w-16 sm:w-20 h-16 sm:h-20 bg-gradient-to-br from-blue-400/20 to-purple-500/20 rounded-full -mr-8 sm:-mr-10 -mt-8 sm:-mt-10"></div>
         
         <div className="relative z-10">
-          {/* Icon */}
-          <div className="w-16 h-16 mx-auto mb-4 rounded-3xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-3xl shadow-lg">
+          {/* Icon - Mobile Responsive */}
+          <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-2xl sm:text-3xl shadow-lg">
             💳
           </div>
           
-          {/* Content */}
-          <div className="text-center mb-6">
-            <h3 className="text-xl font-bold text-gray-800 mb-2">
+          {/* Content - Mobile Responsive */}
+          <div className="text-center mb-4 sm:mb-6">
+            <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-2">
               Set Up Your UPI ID
             </h3>
-            <p className="text-gray-600 text-sm leading-relaxed">
+            <p className="text-gray-600 text-xs sm:text-sm leading-relaxed">
               Add your UPI ID to receive payments from group members. This makes settling expenses quick and easy!
             </p>
           </div>
@@ -112,7 +112,7 @@ const UpiReminder: React.FC = () => {
           <div className="space-y-3">
             <button
               onClick={handleSetupNow}
-              className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white py-3 rounded-2xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+              className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white py-3 sm:py-3.5 rounded-xl sm:rounded-2xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 text-sm sm:text-base min-h-[44px]"
             >
               Set Up Now
             </button>

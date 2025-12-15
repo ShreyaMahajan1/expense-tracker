@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import axios from '../config/axios';
 import Navbar from '../components/Navbar';
 import BudgetAlert from '../components/BudgetAlert';
 import { showError } from '../utils/toast';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, Line } from 'recharts';
+import { BUTTON_VARIANTS } from '../constants/ui.constants';
 
 interface Analytics {
   totalIncome: number;
@@ -38,7 +39,7 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [analyticsRes, budgetsRes] = await Promise.all([
         axios.get('/api/analytics/summary'),
@@ -52,7 +53,7 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   if (loading) {
     return (
@@ -105,7 +106,7 @@ const Dashboard = () => {
               <span className="text-2xl text-white">📊</span>
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">
+              <h1 className="text-xl sm:text-3xl font-bold text-slate-900">
                 Financial Dashboard
               </h1>
               <p className="text-slate-600 mt-1">
@@ -131,7 +132,7 @@ const Dashboard = () => {
               </div>
             </div>
             <div className="space-y-1">
-              <p className="text-2xl font-bold text-blue-600">${analytics.totalIncome.toFixed(2)}</p>
+              <p className="text-lg sm:text-2xl font-bold text-blue-600">${analytics.totalIncome.toFixed(2)}</p>
               <p className="text-sm text-slate-500">This month</p>
             </div>
           </div>
@@ -147,7 +148,7 @@ const Dashboard = () => {
               </div>
             </div>
             <div className="space-y-1">
-              <p className="text-2xl font-bold text-slate-700">${analytics.totalExpense.toFixed(2)}</p>
+              <p className="text-lg sm:text-2xl font-bold text-slate-700">${analytics.totalExpense.toFixed(2)}</p>
               <p className="text-sm text-slate-500">This month</p>
             </div>
           </div>
@@ -163,7 +164,7 @@ const Dashboard = () => {
               </div>
             </div>
             <div className="space-y-1">
-              <p className={`text-2xl font-bold ${analytics.balance >= 0 ? 'text-blue-600' : 'text-slate-700'}`}>
+              <p className={`text-lg sm:text-2xl font-bold ${analytics.balance >= 0 ? 'text-blue-600' : 'text-slate-700'}`}>
                 ${analytics.balance.toFixed(2)}
               </p>
               <p className="text-sm text-slate-500">Current balance</p>
@@ -181,7 +182,7 @@ const Dashboard = () => {
               </div>
             </div>
             <div className="space-y-1">
-              <p className="text-2xl font-bold text-slate-700">
+              <p className="text-lg sm:text-2xl font-bold text-slate-700">
                 {analytics.changePercent > 0 ? '+' : ''}{analytics.changePercent.toFixed(1)}%
               </p>
               <p className="text-sm text-slate-500">Last: ${analytics.prevMonthExpense.toFixed(2)}</p>
@@ -197,7 +198,7 @@ const Dashboard = () => {
                 <span className="text-xl">🎯</span>
               </div>
               <div>
-                <h2 className="text-xl font-bold text-slate-900">Budget Overview</h2>
+                <h2 className="text-lg sm:text-xl font-bold text-slate-900">Budget Overview</h2>
                 <p className="text-slate-600 text-sm">Track your spending against set limits</p>
               </div>
             </div>
@@ -217,7 +218,7 @@ const Dashboard = () => {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className={`text-xl font-bold ${getBudgetTextColor(budget.percentage)}`}>
+                      <p className={`text-lg sm:text-xl font-bold ${getBudgetTextColor(budget.percentage)}`}>
                         {budget.percentage.toFixed(0)}%
                       </p>
                       <p className="text-xs text-slate-500 mt-1">
@@ -345,7 +346,7 @@ const Dashboard = () => {
               <span className="text-xl">📈</span>
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-900">Daily Spending Trend</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-slate-900">Daily Spending Trend</h2>
               <p className="text-slate-600 text-sm">Your spending patterns throughout the month</p>
             </div>
           </div>
@@ -401,7 +402,7 @@ const Dashboard = () => {
               <span className="text-xl">📊</span>
             </div>
             <p className="text-slate-600 text-sm font-medium mb-2">Daily Average</p>
-            <p className="text-xl font-bold text-blue-600">
+            <p className="text-lg sm:text-xl font-bold text-blue-600">
               ${(analytics.totalExpense / new Date().getDate()).toFixed(2)}
             </p>
           </div>
@@ -421,7 +422,7 @@ const Dashboard = () => {
               <span className="text-xl">🔄</span>
             </div>
             <p className="text-slate-600 text-sm font-medium mb-2">Total Transactions</p>
-            <p className="text-xl font-bold text-slate-700">
+            <p className="text-lg sm:text-xl font-bold text-slate-700">
               {analytics.expenseCount + analytics.incomeCount}
             </p>
           </div>
@@ -431,7 +432,7 @@ const Dashboard = () => {
               <span className="text-xl">💎</span>
             </div>
             <p className="text-slate-600 text-sm font-medium mb-2">Savings Rate</p>
-            <p className="text-xl font-bold text-slate-700">
+            <p className="text-lg sm:text-xl font-bold text-slate-700">
               {analytics.totalIncome > 0 ? ((analytics.balance / analytics.totalIncome) * 100).toFixed(0) : 0}%
             </p>
           </div>

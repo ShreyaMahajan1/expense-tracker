@@ -102,19 +102,19 @@ const ReceiptScanner: React.FC<ReceiptScannerProps> = ({ onReceiptScanned, onFil
 
   return (
     <div className="space-y-4">
-      <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-blue-400 transition-colors">
+      <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 sm:p-6 text-center hover:border-blue-400 transition-colors">
         {!selectedFile ? (
           <div>
-            <div className="text-4xl mb-3">📄</div>
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">Upload Receipt</h3>
-            <p className="text-sm text-gray-500 mb-4">
+            <div className="text-3xl sm:text-4xl mb-2 sm:mb-3">📄</div>
+            <h3 className="text-base sm:text-lg font-semibold text-gray-700 mb-2">Upload Receipt</h3>
+            <p className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">
               Take a photo or upload an image of your receipt
             </p>
             <div className="flex flex-col sm:flex-row gap-2 justify-center">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
+                className="px-3 sm:px-4 py-2.5 sm:py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium text-sm min-h-[44px] sm:min-h-0"
               >
                 📁 Choose File
               </button>
@@ -124,7 +124,7 @@ const ReceiptScanner: React.FC<ReceiptScannerProps> = ({ onReceiptScanned, onFil
                   // In real app, this would open camera
                   fileInputRef.current?.click();
                 }}
-                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium"
+                className="px-3 sm:px-4 py-2.5 sm:py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium text-sm min-h-[44px] sm:min-h-0"
               >
                 📷 Take Photo
               </button>
@@ -132,11 +132,11 @@ const ReceiptScanner: React.FC<ReceiptScannerProps> = ({ onReceiptScanned, onFil
           </div>
         ) : (
           <div>
-            <div className="text-2xl mb-2">✅</div>
-            <p className="text-sm font-medium text-gray-700 mb-2">
+            <div className="text-xl sm:text-2xl mb-2">✅</div>
+            <p className="text-sm font-medium text-gray-700 mb-2 truncate">
               {selectedFile.name}
             </p>
-            <p className="text-xs text-gray-500 mb-4">
+            <p className="text-xs text-gray-500 mb-3 sm:mb-4">
               {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
             </p>
             <div className="flex gap-2 justify-center">

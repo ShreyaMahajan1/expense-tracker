@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 import { useToast } from '../utils/toast';
+import { BUTTON_VARIANTS } from '../constants/ui.constants';
 
 interface Budget {
   _id: string;
@@ -117,7 +118,7 @@ const BudgetPage = () => {
               <span className="text-2xl text-white">🎯</span>
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">
+              <h1 className="text-xl sm:text-3xl font-bold text-slate-900">
                 Budget Management
               </h1>
               <p className="text-slate-600 mt-1">
@@ -132,15 +133,15 @@ const BudgetPage = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="text-center md:text-left">
                   <p className="text-sm font-medium text-slate-500 mb-1">Total Budget</p>
-                  <p className="text-2xl font-bold text-slate-900">${totalBudget.toFixed(2)}</p>
+                  <p className="text-lg sm:text-2xl font-bold text-slate-900">${totalBudget.toFixed(2)}</p>
                 </div>
                 <div className="text-center md:text-left">
                   <p className="text-sm font-medium text-slate-500 mb-1">Total Spent</p>
-                  <p className="text-2xl font-bold text-slate-700">${totalSpent.toFixed(2)}</p>
+                  <p className="text-lg sm:text-2xl font-bold text-slate-700">${totalSpent.toFixed(2)}</p>
                 </div>
                 <div className="text-center md:text-left">
                   <p className="text-sm font-medium text-slate-500 mb-1">Remaining</p>
-                  <p className={`text-2xl font-bold ${totalRemaining >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                  <p className={`text-lg sm:text-2xl font-bold ${totalRemaining >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
                     ${totalRemaining.toFixed(2)}
                   </p>
                 </div>
@@ -164,7 +165,7 @@ const BudgetPage = () => {
                 <span className="text-xl">✏️</span>
               </div>
               <div>
-                <h2 className="text-xl font-bold text-slate-900">Set Category Budget</h2>
+                <h2 className="text-lg sm:text-xl font-bold text-slate-900">Set Category Budget</h2>
                 <p className="text-slate-600 text-sm">Define spending limits for better financial control</p>
               </div>
             </div>
@@ -226,12 +227,12 @@ const BudgetPage = () => {
                       <span className="text-2xl">{getStatusIcon(budget.percentage)}</span>
                     </div>
                     <div>
-                      <h3 className="text-xl font-bold text-slate-900">{budget.category}</h3>
+                      <h3 className="text-lg sm:text-xl font-bold text-slate-900">{budget.category}</h3>
                       <p className="text-sm text-slate-500">Monthly Budget</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className={`text-xl font-bold ${getBudgetTextColor(budget.percentage)}`}>
+                    <p className={`text-lg sm:text-xl font-bold ${getBudgetTextColor(budget.percentage)}`}>
                       {budget.percentage.toFixed(0)}%
                     </p>
                     <p className="text-xs text-slate-500">

@@ -109,17 +109,17 @@ const Profile = () => {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       <div className="container mx-auto px-4 py-4 md:py-8 max-w-2xl">
-        <h1 className="text-2xl md:text-3xl font-bold mb-6">Profile Settings</h1>
+        <h1 className="text-lg md:text-3xl font-bold mb-6">Profile Settings</h1>
 
         <div className="bg-white rounded-xl shadow-md overflow-hidden">
           {/* Profile Header */}
           <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6">
             <div className="flex items-center gap-4">
-              <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-3xl font-bold">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-xl sm:text-3xl font-bold">
                 {profile?.name.charAt(0).toUpperCase()}
               </div>
               <div>
-                <h2 className="text-2xl font-bold">{profile?.name}</h2>
+                <h2 className="text-lg sm:text-2xl font-bold">{profile?.name}</h2>
                 <p className="text-blue-100">{profile?.email}</p>
               </div>
             </div>

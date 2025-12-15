@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { PAYMENT_METHODS } from '../constants/group.constants';
-import { maskUpiId } from '../utils/upiUtils';
+import { MODAL_CLASSES, BUTTON_VARIANTS } from '../constants/ui.constants';
 import { useScrollLock } from '../hooks/useScrollLock';
+import { UpiAppHandler, UPI_APPS } from '../utils/upiAppHandler';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -32,41 +33,84 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   onMarkAsPaid,
 }) => {
   
+  const [isMobile, setIsMobile] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
+  
   // Lock body scroll when modal is open
   useScrollLock(isOpen);
   
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+    };
+    checkMobile();
+  }, []);
+  
   if (!isOpen) return null;
 
-  const handleCopyUpiId = async () => {
-    try {
-      await navigator.clipboard.writeText(payeeUpiId);
-    } catch (error) {
-      console.error('Failed to copy UPI ID:', error);
+  // Mask UPI ID for privacy (show only first 2 and last part after @)
+  const maskUpiId = useCallback((upiId: string): string => {
+    if (!upiId || upiId.length < 4) return upiId;
+    
+    const [localPart, domain] = upiId.split('@');
+    if (!domain) return upiId;
+    
+    if (localPart.length <= 4) {
+      return `${localPart.charAt(0)}${'x'.repeat(localPart.length - 1)}@${domain}`;
     }
-  };
+    
+    const maskedLocal = `${localPart.substring(0, 2)}${'x'.repeat(localPart.length - 4)}${localPart.substring(localPart.length - 2)}`;
+    return `${maskedLocal}@${domain}`;
+  }, []);
+
+  const handleCopyUpiId = useCallback(async () => {
+    const success = await UpiAppHandler.copyUpiId(payeeUpiId);
+    if (success) {
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    }
+  }, [payeeUpiId]);
+
+  const handlePayWithUPI = useCallback(async () => {
+    if (!payeeUpiId) return;
+
+    const paymentData = {
+      payeeUpiId,
+      payeeName,
+      amount: paymentAmount,
+      note: `Payment to ${payeeName}`
+    };
+
+    const success = await UpiAppHandler.openUpiApp(paymentData);
+    if (!success && isMobile) {
+      UpiAppHandler.showUpiAppNotFoundMessage();
+    }
+  }, [payeeUpiId, payeeName, paymentAmount, isMobile]);
 
 
 
   return (
     <div 
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 z-50"
+      className={MODAL_CLASSES.OVERLAY}
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-2xl shadow-lg max-w-xs w-full h-auto max-h-[85vh] flex flex-col"
+        className={MODAL_CLASSES.CONTAINER}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="bg-blue-600 rounded-t-2xl p-3 flex-shrink-0">
+        <div className={MODAL_CLASSES.HEADER}>
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-base font-semibold text-white">
+              <h2 className="text-lg sm:text-base font-semibold text-white">
                 Pay ₹{paymentAmount.toFixed(2)}
               </h2>
+              <p className="text-blue-100 text-sm sm:text-xs">to {payeeName}</p>
             </div>
             <button
               onClick={onClose}
-              className="text-white hover:text-gray-200 text-lg w-6 h-6 flex items-center justify-center rounded-full hover:bg-white hover:bg-opacity-20"
+              className="text-white hover:text-gray-200 text-xl w-8 h-8 flex items-center justify-center rounded-full hover:bg-white hover:bg-opacity-20 transition-colors"
               aria-label="Close modal"
             >
               ×
@@ -74,93 +118,142 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           </div>
         </div>
         
-        <div className="p-2 overflow-y-auto flex-1 min-h-0 space-y-2">
-          {/* Payee Info */}
-          <div className="bg-gray-50 rounded-xl p-2">
-            <p className="text-sm font-medium text-gray-700 text-center">
-              To: <span className="font-semibold text-gray-900">{payeeName}</span>
-            </p>
-          </div>
-
+        <div className={MODAL_CLASSES.CONTENT}>
           {/* UPI Payment Section */}
-          <div className="border rounded-xl p-2">
+          <div className="border border-gray-200 rounded-xl p-4 sm:p-3">
             {upiLink && payeeUpiId ? (
               <>
-                <div className="text-center mb-2">
-                  <QRCodeSVG 
-                    value={upiLink} 
-                    size={90}
-                    level="L"
-                    includeMargin={true}
-                    marginSize={1}
-                  />
+                {/* Mobile-Only UPI Payment Button */}
+                {isMobile && (
+                  <div className="mb-4">
+                    <button
+                      onClick={handlePayWithUPI}
+                      className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white py-3 px-4 rounded-xl font-semibold text-base flex items-center justify-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg"
+                    >
+                      <span className="text-xl">📱</span>
+                      <span>Pay with UPI App</span>
+                    </button>
+                    <p className="text-xs text-gray-500 text-center mt-2">
+                      Opens your UPI app directly
+                    </p>
+                  </div>
+                )}
+                
+                {/* QR Code Section */}
+                <div className="text-center mb-3 sm:mb-2">
+                  <div className="inline-block p-3 sm:p-2 bg-white border-2 border-gray-200 rounded-xl">
+                    <QRCodeSVG 
+                      value={upiLink} 
+                      size={isMobile ? 120 : 100}
+                      level="M"
+                      includeMargin={true}
+                      marginSize={1}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-600 mt-2 sm:mt-1">
+                    Scan with any UPI app
+                  </p>
                 </div>
                 
-                <div className="bg-gray-50 rounded-lg p-2 mb-1">
-                  <div className="flex items-center justify-between gap-2">
+                {/* UPI ID Section */}
+                <div className="bg-gray-50 rounded-xl p-3 sm:p-2 mb-3 sm:mb-2">
+                  <div className="flex items-center justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-gray-500">UPI ID</p>
-                      <p className="font-mono text-xs text-gray-800 truncate">
+                      <p className="text-xs text-gray-500 mb-1 sm:mb-0.5">UPI ID</p>
+                      <p className="font-mono text-sm text-gray-800 truncate">
                         {maskUpiId(payeeUpiId)}
                       </p>
                     </div>
                     <button
                       onClick={handleCopyUpiId}
-                      className="px-2 py-1 bg-blue-500 text-white rounded-lg text-xs hover:bg-blue-600 flex-shrink-0"
+                      className={`px-3 py-2 sm:px-2 sm:py-1.5 rounded-lg text-sm sm:text-xs font-medium flex-shrink-0 transition-all duration-200 ${
+                        copySuccess 
+                          ? 'bg-green-500 text-white' 
+                          : 'bg-blue-500 hover:bg-blue-600 text-white'
+                      }`}
+                      title="Copy full UPI ID"
                     >
-                      Copy
+                      {copySuccess ? '✓ Copied' : 'Copy'}
                     </button>
                   </div>
                 </div>
                 
-                <p className="text-xs text-gray-600 text-center">
-                  Scan QR or use UPI ID
-                </p>
+                {/* Popular UPI Apps - Mobile Only */}
+                {isMobile && (
+                  <div className="grid grid-cols-4 gap-2 mb-3">
+                    {UPI_APPS.slice(0, 4).map((app) => (
+                      <button
+                        key={app.name}
+                        onClick={handlePayWithUPI}
+                        className={`${app.color} text-white p-2 rounded-lg text-xs font-medium flex flex-col items-center gap-1 hover:opacity-90 transition-opacity active:scale-95`}
+                      >
+                        <span className="text-lg">{app.emoji}</span>
+                        <span>{app.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </>
             ) : (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 text-center">
-                <p className="text-xs text-yellow-800">
-                  ⚠️ No UPI ID set
+              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-center">
+                <span className="text-2xl block mb-2">⚠️</span>
+                <p className="text-sm text-yellow-800 font-medium">
+                  UPI ID not available
+                </p>
+                <p className="text-xs text-yellow-700 mt-1">
+                  Ask {payeeName} to set up their UPI ID
                 </p>
               </div>
             )}
           </div>
 
           {/* Payment Verification Form */}
-          <div className="border rounded-xl p-2">
-            <h3 className="text-sm font-medium text-gray-900 mb-2">
-              Verify Payment
+          <div className="border border-gray-200 rounded-xl p-4 sm:p-3">
+            <h3 className="text-base sm:text-sm font-semibold text-gray-900 mb-3 sm:mb-2 flex items-center gap-2">
+              <span className="text-lg sm:text-base">✅</span>
+              <span>Confirm Payment</span>
             </h3>
             
-            <div className="space-y-2">
-              <select
-                value={paymentMethod}
-                onChange={(e) => onPaymentMethodChange(e.target.value)}
-                className="w-full px-2 py-1.5 rounded-lg text-sm"
-              >
-                <option value={PAYMENT_METHODS.UPI}>{PAYMENT_METHODS.UPI}</option>
-                <option value={PAYMENT_METHODS.CASH}>{PAYMENT_METHODS.CASH}</option>
-                <option value={PAYMENT_METHODS.BANK_TRANSFER}>{PAYMENT_METHODS.BANK_TRANSFER}</option>
-              </select>
+            <div className="space-y-3 sm:space-y-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2 sm:mb-1">
+                  Payment Method
+                </label>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => onPaymentMethodChange(e.target.value)}
+                  className="w-full px-3 py-2.5 sm:py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value={PAYMENT_METHODS.UPI}>💳 {PAYMENT_METHODS.UPI}</option>
+                  <option value={PAYMENT_METHODS.CASH}>💵 {PAYMENT_METHODS.CASH}</option>
+                  <option value={PAYMENT_METHODS.BANK_TRANSFER}>🏦 {PAYMENT_METHODS.BANK_TRANSFER}</option>
+                </select>
+              </div>
 
-              <input
-                type="text"
-                value={transactionId}
-                onChange={(e) => onTransactionIdChange(e.target.value)}
-                placeholder="Transaction ID"
-                className="w-full px-2 py-1.5 rounded-lg text-sm"
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2 sm:mb-1">
+                  Transaction ID
+                </label>
+                <input
+                  type="text"
+                  value={transactionId}
+                  onChange={(e) => onTransactionIdChange(e.target.value)}
+                  placeholder="Enter transaction ID or reference number"
+                  className="w-full px-3 py-2.5 sm:py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-3 pt-2 sm:pt-1">
                 <button
                   onClick={onMarkAsPaid}
-                  className="flex-1 bg-green-600 text-white py-1.5 rounded-lg hover:bg-green-700 font-medium text-sm"
+                  disabled={!transactionId.trim()}
+                  className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 sm:py-2.5 rounded-lg font-semibold text-sm transition-colors"
                 >
-                  Paid
+                  Mark as Paid
                 </button>
                 <button
                   onClick={onClose}
-                  className="flex-1 bg-gray-300 text-gray-700 py-1.5 rounded-lg hover:bg-gray-400 text-sm"
+                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 sm:py-2.5 rounded-lg font-semibold text-sm transition-colors"
                 >
                   Cancel
                 </button>

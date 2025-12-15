@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 import ReceiptScanner from '../components/ReceiptScanner';
 import { format } from 'date-fns';
 import { useToast } from '../utils/toast';
+import { BUTTON_VARIANTS } from '../constants/ui.constants';
 
 interface Expense {
   _id: string;
@@ -41,7 +42,7 @@ const Expenses = () => {
     fetchExpenses();
   }, []);
 
-  const fetchExpenses = async () => {
+  const fetchExpenses = useCallback(async () => {
     try {
       setLoading(true);
       const response = await axios.get('/api/expenses');
@@ -52,7 +53,7 @@ const Expenses = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showError]);
 
   const handleReceiptScanned = (data: {
     amount: string;
@@ -143,8 +144,11 @@ const Expenses = () => {
     return icons[method] || '💰';
   };
 
-  // Calculate total expenses
-  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  // Memoized calculations
+  const totalExpenses = useMemo(() => 
+    expenses.reduce((sum, expense) => sum + expense.amount, 0), 
+    [expenses]
+  );
 
   // Loading state
   if (loading) {
@@ -173,7 +177,7 @@ const Expenses = () => {
               <span className="text-2xl text-white">💸</span>
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">
+              <h1 className="text-xl sm:text-3xl font-bold text-slate-900">
                 Expenses
               </h1>
               <p className="text-slate-600 mt-1">
@@ -187,7 +191,7 @@ const Expenses = () => {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex-1">
                 <p className="text-sm font-medium text-slate-500 mb-1">Total Expenses This Month</p>
-                <p className="text-2xl sm:text-3xl font-bold text-slate-900">${totalExpenses.toFixed(2)}</p>
+                <p className="text-lg sm:text-3xl font-bold text-slate-900">${totalExpenses.toFixed(2)}</p>
                 <p className="text-sm text-slate-500 mt-1">{expenses.length} transactions</p>
               </div>
               <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
@@ -223,7 +227,7 @@ const Expenses = () => {
                 <span className="text-xl">📄</span>
               </div>
               <div>
-                <h2 className="text-xl font-bold text-slate-900">Scan Receipt</h2>
+                <h2 className="text-lg sm:text-xl font-bold text-slate-900">Scan Receipt</h2>
                 <p className="text-slate-600 text-sm">Upload a receipt to automatically extract expense details</p>
               </div>
             </div>
@@ -243,7 +247,7 @@ const Expenses = () => {
                   <span className="text-xl">{scannedItems.length > 0 ? '📄' : '✏️'}</span>
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900">
+                  <h2 className="text-lg sm:text-xl font-bold text-slate-900">
                     {scannedItems.length > 0 ? 'Review Scanned Expense' : 'Add New Expense'}
                   </h2>
                   <p className="text-slate-600 text-sm">
@@ -453,7 +457,7 @@ const Expenses = () => {
                 </div>
 
                 <div className="flex justify-between items-center mb-4">
-                  <span className="text-2xl font-bold text-slate-900">${expense.amount.toFixed(2)}</span>
+                  <span className="text-lg sm:text-2xl font-bold text-slate-900">${expense.amount.toFixed(2)}</span>
                   <div className="flex items-center gap-2 text-sm text-slate-600">
                     <span>{getPaymentIcon(expense.paymentMethod)}</span>
                     <span>{expense.paymentMethod}</span>
@@ -489,7 +493,7 @@ const Expenses = () => {
             <div className="w-16 h-16 bg-slate-100 rounded-xl flex items-center justify-center mx-auto mb-6">
               <span className="text-3xl">💸</span>
             </div>
-            <h3 className="text-xl font-bold text-slate-900 mb-2">No expenses yet</h3>
+            <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2">No expenses yet</h3>
             <p className="text-slate-600 mb-6">Start tracking your spending by adding your first expense</p>
             <button
               onClick={() => setShowForm(true)}

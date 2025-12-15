@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 import { format } from 'date-fns';
 import { useToast } from '../utils/toast';
+import { BUTTON_VARIANTS } from '../constants/ui.constants';
 
 interface Income {
   _id: string;
@@ -28,7 +29,7 @@ const Income = () => {
     fetchIncomes();
   }, []);
 
-  const fetchIncomes = async () => {
+  const fetchIncomes = useCallback(async () => {
     try {
       setLoading(true);
       const response = await axios.get('/api/income');
@@ -39,7 +40,7 @@ const Income = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,7 +73,10 @@ const Income = () => {
     }
   };
 
-  const totalIncome = incomes.reduce((sum, inc) => sum + inc.amount, 0);
+  const totalIncome = useMemo(() => 
+    incomes.reduce((sum, inc) => sum + inc.amount, 0), 
+    [incomes]
+  );
 
   const getSourceIcon = (source: string) => {
     const icons: Record<string, string> = {
@@ -113,7 +117,7 @@ const Income = () => {
               <span className="text-2xl text-white">💰</span>
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">
+              <h1 className="text-xl sm:text-3xl font-bold text-slate-900">
                 Income
               </h1>
               <p className="text-slate-600 mt-1">
@@ -127,7 +131,7 @@ const Income = () => {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex-1">
                 <p className="text-sm font-medium text-slate-500 mb-1">Total Income This Month</p>
-                <p className="text-2xl sm:text-3xl font-bold text-blue-600">${totalIncome.toFixed(2)}</p>
+                <p className="text-lg sm:text-3xl font-bold text-blue-600">${totalIncome.toFixed(2)}</p>
                 <p className="text-sm text-slate-500 mt-1">{incomes.length} income sources</p>
               </div>
               <div className="flex">
@@ -150,7 +154,7 @@ const Income = () => {
                 <span className="text-xl">✏️</span>
               </div>
               <div>
-                <h2 className="text-xl font-bold text-slate-900">Add New Income</h2>
+                <h2 className="text-lg sm:text-xl font-bold text-slate-900">Add New Income</h2>
                 <p className="text-slate-600 text-sm">Record your earnings and income sources</p>
               </div>
             </div>
@@ -235,7 +239,7 @@ const Income = () => {
                 </div>
 
                 <div className="mb-4">
-                  <span className="text-2xl font-bold text-blue-600">+${income.amount.toFixed(2)}</span>
+                  <span className="text-lg sm:text-2xl font-bold text-blue-600">+${income.amount.toFixed(2)}</span>
                 </div>
 
                 <div className="flex items-center justify-between pt-4 border-t border-slate-100">
@@ -259,7 +263,7 @@ const Income = () => {
             <div className="w-16 h-16 bg-slate-100 rounded-xl flex items-center justify-center mx-auto mb-6">
               <span className="text-3xl">💰</span>
             </div>
-            <h3 className="text-xl font-bold text-slate-900 mb-2">No income recorded yet</h3>
+            <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2">No income recorded yet</h3>
             <p className="text-slate-600 mb-6">Start tracking your income sources and earnings</p>
             <button
               onClick={() => setShowForm(true)}

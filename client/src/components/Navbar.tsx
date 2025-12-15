@@ -29,12 +29,12 @@ const Navbar = () => {
       <div className="container mx-auto px-4 py-4">
         <div className="flex justify-between items-center">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
+          <Link to="/" className="flex items-center gap-2 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm sm:text-lg">
               💎
             </div>
             <div>
-              <h1 className="text-lg sm:text-xl font-bold text-gray-900">MoneyFlow</h1>
+              <h1 className="text-sm sm:text-xl font-bold text-gray-900">MoneyFlow</h1>
               <p className="text-xs text-gray-600 -mt-1 hidden sm:block">Smart expense tracking</p>
             </div>
           </Link>
