@@ -226,7 +226,7 @@ const NotificationBell = () => {
 
         {/* Dropdown - Mobile Responsive */}
         {showDropdown && (
-          <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-200 z-50 max-h-80 sm:max-h-96 overflow-hidden">
+          <div className="fixed inset-x-4 top-24 sm:absolute sm:right-0 sm:left-auto sm:top-auto sm:mt-2 sm:w-96 sm:max-w-none bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-200 z-50 max-h-[70vh] sm:max-h-96 overflow-hidden">
             <div className="p-3 sm:p-4 border-b border-gray-200 bg-gray-50">
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-sm sm:text-base text-gray-800">Notifications</h3>
@@ -241,7 +241,7 @@ const NotificationBell = () => {
               </div>
             </div>
             
-            <div className="max-h-64 sm:max-h-80 overflow-y-auto scrollbar-hide bg-white">
+            <div className="max-h-[60vh] sm:max-h-80 overflow-y-auto scrollbar-hide bg-white">
               {notifications.length > 0 ? (
                 notifications.slice(0, 10).map((notification) => (
                   <div

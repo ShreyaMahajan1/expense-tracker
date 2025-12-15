@@ -16,9 +16,28 @@ const NotificationPermission: React.FC = () => {
     const currentPermission = notificationService.getPermissionStatus();
     setPermission(currentPermission);
 
-    // Show prompt if permission is default and not dismissed
-    const isDismissed = localStorage.getItem('notification-permission-dismissed');
-    if (currentPermission === 'default' && !isDismissed) {
+    // Check if user has dismissed the prompt
+    const dismissedValue = localStorage.getItem('notification-permission-dismissed');
+    let shouldShow = true;
+
+    if (dismissedValue) {
+      if (dismissedValue === 'true') {
+        // Permanently dismissed
+        shouldShow = false;
+      } else {
+        // Check if reminder time has passed
+        const reminderTime = parseInt(dismissedValue);
+        if (!isNaN(reminderTime) && Date.now() < reminderTime) {
+          shouldShow = false;
+        } else if (!isNaN(reminderTime)) {
+          // Reminder time has passed, clear the localStorage
+          localStorage.removeItem('notification-permission-dismissed');
+        }
+      }
+    }
+
+    // Show prompt if permission is default and should show
+    if (currentPermission === 'default' && shouldShow) {
       // Show after a short delay to not overwhelm user
       setTimeout(() => {
         setShowPrompt(true);
