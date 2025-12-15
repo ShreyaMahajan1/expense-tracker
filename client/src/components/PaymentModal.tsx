@@ -46,8 +46,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     };
     checkMobile();
   }, []);
-  
-  if (!isOpen) return null;
 
   // Mask UPI ID for privacy (show only first 2 and last part after @)
   const maskUpiId = useCallback((upiId: string): string => {
@@ -87,6 +85,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       UpiAppHandler.showUpiAppNotFoundMessage();
     }
   }, [payeeUpiId, payeeName, paymentAmount, isMobile]);
+  
+  if (!isOpen) return null;
 
 
 

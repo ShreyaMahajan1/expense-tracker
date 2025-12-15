@@ -314,6 +314,96 @@ router.post('/:id/upi-link', authenticate, async (req: AuthRequest, res) => {
   }
 });
 
+// Create direct payment record (when no existing settlement exists)
+router.post('/direct-payment', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { fromUserId, amount, paymentMethod, transactionId, groupId } = req.body;
+
+    // Verify the user is paying their own debt
+    if (fromUserId !== req.userId) {
+      return res.status(403).json({ error: 'You can only record your own payments' });
+    }
+
+    // Find who should receive this payment by calculating balances
+    const expenses = await Expense.find({ groupId }).populate('userId', 'name email');
+    const splits = await ExpenseSplit.find({
+      expenseId: { $in: expenses.map(e => e._id) }
+    }).populate('userId', 'name email');
+
+    const group = await Group.findById(groupId).populate('members.userId', 'name email');
+    if (!group) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+
+    // Calculate balances to find the creditor
+    const balances: Record<string, number> = {};
+    group.members.forEach(member => {
+      const userId = member.userId._id.toString();
+      balances[userId] = 0;
+    });
+
+    expenses.forEach(expense => {
+      const payerId = expense.userId._id.toString();
+      if (balances.hasOwnProperty(payerId)) {
+        balances[payerId] += expense.amount;
+      }
+    });
+
+    splits.forEach(split => {
+      const userId = split.userId._id.toString();
+      if (balances.hasOwnProperty(userId)) {
+        balances[userId] -= split.amount;
+      }
+    });
+
+    // Find the main creditor (person owed the most money)
+    const creditorId = Object.entries(balances)
+      .filter(([userId, balance]) => userId !== fromUserId && balance > 0.01)
+      .sort(([, a], [, b]) => b - a)[0]?.[0];
+
+    if (!creditorId) {
+      return res.status(400).json({ error: 'No creditor found for this payment' });
+    }
+
+    // Create settlement record
+    const settlement = await Settlement.create({
+      groupId,
+      fromUserId,
+      toUserId: creditorId,
+      amount: parseFloat(amount),
+      status: 'paid',
+      paymentMethod,
+      transactionId,
+      paidAt: new Date()
+    });
+
+    const populatedSettlement = await Settlement.findById(settlement._id)
+      .populate('fromUserId', 'name email')
+      .populate('toUserId', 'name email')
+      .populate('groupId', 'name');
+
+    // Send payment received notification
+    if (notificationService && populatedSettlement) {
+      const group = populatedSettlement.groupId as any;
+      const payer = populatedSettlement.fromUserId as any;
+      
+      await notificationService.sendPaymentReceived(
+        creditorId,
+        fromUserId,
+        groupId,
+        parseFloat(amount),
+        group.name,
+        payer.name
+      );
+    }
+
+    res.json(populatedSettlement);
+  } catch (error) {
+    console.error('Direct payment error:', error);
+    res.status(400).json({ error: 'Failed to record direct payment' });
+  }
+});
+
 // Send payment reminders for outstanding balances
 router.post('/group/:groupId/send-reminders', authenticate, async (req: AuthRequest, res) => {
   try {

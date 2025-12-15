@@ -31,4 +31,23 @@ router.put('/', authenticate, async (req: AuthRequest, res) => {
   }
 });
 
+// Get user UPI ID for payment purposes (public endpoint for group members)
+router.get('/upi/:userId', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { userId } = req.params;
+    
+    const user = await User.findById(userId).select('name upiId');
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      name: user.name,
+      upiId: user.upiId || null
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch user UPI details' });
+  }
+});
+
 export default router;

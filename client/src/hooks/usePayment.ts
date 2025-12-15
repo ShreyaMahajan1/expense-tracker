@@ -10,6 +10,7 @@ interface PaymentModalState {
   paymentAmount: number;
   upiLink: string;
   payeeUpiId: string;
+  groupId: string;
 }
 
 interface UsePaymentReturn {
@@ -36,6 +37,7 @@ export const usePayment = (
     paymentAmount: 0,
     upiLink: '',
     payeeUpiId: '',
+    groupId: '',
   });
   
   const [paymentMethod, setPaymentMethod] = useState<string>(PAYMENT_METHODS.UPI);
@@ -62,29 +64,30 @@ export const usePayment = (
     const amount = Math.abs(balance.balance);
 
     try {
-      // Create settlement request
-      const settlementRes = await axios.post(`${API_ENDPOINTS.SETTLEMENTS}${API_ENDPOINTS.REQUEST}`, {
-        groupId,
-        toUserId: payee.userId,
-        amount
-      });
+      // Get payee's UPI ID directly without creating a settlement request
+      const userRes = await axios.get(`/api/profile/upi/${payee.userId}`);
+      const payeeUpiId = userRes.data.upiId;
 
-      // Generate UPI link
-      const upiRes = await axios.post(
-        `${API_ENDPOINTS.SETTLEMENTS}/${settlementRes.data._id}${API_ENDPOINTS.UPI_LINK}`
-      );
+      if (!payeeUpiId) {
+        showError(`${payee.userName} hasn't set up their UPI ID yet. Ask them to add it in their profile.`);
+        return;
+      }
+
+      // Generate UPI link directly
+      const upiLink = `upi://pay?pa=${payeeUpiId}&pn=${encodeURIComponent(payee.userName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(`Payment from group: ${groupId}`)}`;
 
       setPaymentModal({
         isOpen: true,
         selectedBalance: balance,
         payeeName: payee.userName,
         paymentAmount: amount,
-        upiLink: upiRes.data.upiLink,
-        payeeUpiId: upiRes.data.payeeUpiId,
+        upiLink: upiLink,
+        payeeUpiId: payeeUpiId,
+        groupId: groupId,
       });
     } catch (error: any) {
-      console.error('Failed to create payment:', error);
-      const errorMsg = error.response?.data?.error || 'Failed to create payment request';
+      console.error('Failed to prepare payment:', error);
+      const errorMsg = error.response?.data?.error || 'Failed to prepare payment';
       showError(errorMsg);
     }
   }, [getCurrentUserId]);
@@ -97,6 +100,7 @@ export const usePayment = (
       paymentAmount: 0,
       upiLink: '',
       payeeUpiId: '',
+      groupId: '',
     });
     setTransactionId('');
   }, []);
@@ -113,27 +117,59 @@ export const usePayment = (
     }
 
     try {
-      const pendingSettlement = settlements.find(
-        s => s.fromUserId._id === paymentModal.selectedBalance?.userId && s.status === 'pending'
-      );
+      // Find the payee from balances
+      const payee = settlements.length > 0 
+        ? settlements.find(s => s.toUserId._id !== paymentModal.selectedBalance?.userId)?.toUserId
+        : null;
 
-      if (pendingSettlement) {
-        await axios.post(`${API_ENDPOINTS.SETTLEMENTS}/${pendingSettlement._id}${API_ENDPOINTS.PAY}`, {
+      if (!payee) {
+        // If no existing settlement, we need to find the payee from the group
+        // For now, we'll create a direct payment record
+        await axios.post(`${API_ENDPOINTS.SETTLEMENTS}/direct-payment`, {
+          fromUserId: paymentModal.selectedBalance.userId,
+          amount: paymentModal.paymentAmount,
           paymentMethod,
-          transactionId: transactionId.trim()
+          transactionId: transactionId.trim(),
+          groupId: paymentModal.groupId
         });
+
+        closePaymentModal();
+        onPaymentSuccess();
+        showSuccess('✅ Payment recorded successfully! The payee will be notified.');
+        return true;
+      } else {
+        // Check for existing pending settlement
+        const pendingSettlement = settlements.find(
+          s => s.fromUserId._id === paymentModal.selectedBalance?.userId && s.status === 'pending'
+        );
+
+        if (pendingSettlement) {
+          await axios.post(`${API_ENDPOINTS.SETTLEMENTS}/${pendingSettlement._id}${API_ENDPOINTS.PAY}`, {
+            paymentMethod,
+            transactionId: transactionId.trim()
+          });
+        } else {
+          // Create new settlement and mark as paid immediately
+          const settlementRes = await axios.post(`${API_ENDPOINTS.SETTLEMENTS}${API_ENDPOINTS.REQUEST}`, {
+            groupId: paymentModal.groupId,
+            toUserId: payee._id,
+            amount: paymentModal.paymentAmount
+          });
+
+          await axios.post(`${API_ENDPOINTS.SETTLEMENTS}/${settlementRes.data._id}${API_ENDPOINTS.PAY}`, {
+            paymentMethod,
+            transactionId: transactionId.trim()
+          });
+        }
 
         closePaymentModal();
         onPaymentSuccess();
         showSuccess('✅ Payment recorded successfully! The payee can verify the transaction ID.');
         return true;
-      } else {
-        showError('No pending settlement found for this payment');
-        return false;
       }
     } catch (error) {
       console.error('Failed to mark as paid:', error);
-      showError('Failed to mark payment as paid');
+      showError('Failed to record payment');
       return false;
     }
   }, [paymentModal.isOpen, paymentModal.selectedBalance, transactionId, paymentMethod, closePaymentModal, onPaymentSuccess]);
