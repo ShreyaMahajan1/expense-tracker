@@ -1,6 +1,6 @@
 import React from 'react';
 import { Group } from '../types/group.types';
-import { BUTTON_VARIANTS, SPACING } from '../constants/ui.constants';
+import { BUTTON_VARIANTS } from '../constants/ui.constants';
 
 interface ExpenseData {
   amount: string;

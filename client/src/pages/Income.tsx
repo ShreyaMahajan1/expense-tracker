@@ -3,7 +3,6 @@ import axios from 'axios';
 import Navbar from '../components/Navbar';
 import { format } from 'date-fns';
 import { useToast } from '../utils/toast';
-import { BUTTON_VARIANTS } from '../constants/ui.constants';
 
 interface Income {
   _id: string;

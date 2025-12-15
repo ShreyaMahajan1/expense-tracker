@@ -4,7 +4,6 @@ import Navbar from '../components/Navbar';
 import ReceiptScanner from '../components/ReceiptScanner';
 import { format } from 'date-fns';
 import { useToast } from '../utils/toast';
-import { BUTTON_VARIANTS } from '../constants/ui.constants';
 
 interface Expense {
   _id: string;

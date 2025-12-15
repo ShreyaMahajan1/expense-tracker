@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { PAYMENT_METHODS } from '../constants/group.constants';
-import { MODAL_CLASSES, BUTTON_VARIANTS } from '../constants/ui.constants';
+import { MODAL_CLASSES } from '../constants/ui.constants';
 import { useScrollLock } from '../hooks/useScrollLock';
 import { UpiAppHandler, UPI_APPS } from '../utils/upiAppHandler';
 

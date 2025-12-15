@@ -1,10 +1,9 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import axios from '../config/axios';
 import Navbar from '../components/Navbar';
 import BudgetAlert from '../components/BudgetAlert';
 import { showError } from '../utils/toast';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, Line } from 'recharts';
-import { BUTTON_VARIANTS } from '../constants/ui.constants';
 
 interface Analytics {
   totalIncome: number;
