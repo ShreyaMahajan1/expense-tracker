@@ -27,6 +27,34 @@ const NotificationBell = () => {
   const [showToast, setShowToast] = useState<Notification | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Helper function to format notification dates safely
+  const formatNotificationDate = (dateString: string): string => {
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return 'Just now';
+      }
+      
+      const now = new Date();
+      const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+      
+      if (diffInHours < 1) {
+        return 'Just now';
+      } else if (diffInHours < 24) {
+        return `${diffInHours}h ago`;
+      } else if (diffInHours < 48) {
+        return 'Yesterday';
+      } else {
+        return date.toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric' 
+        });
+      }
+    } catch (error) {
+      return 'Just now';
+    }
+  };
+
   const unreadCount = useMemo(() => 
     notifications.filter(n => !n.isRead).length, 
     [notifications]
@@ -270,7 +298,7 @@ const NotificationBell = () => {
                             {notification.category}
                           </span>
                           <span className="text-xs text-gray-500 flex-shrink-0">
-                            {new Date(notification.createdAt).toLocaleDateString()}
+                            {formatNotificationDate(notification.createdAt)}
                           </span>
                         </div>
                       </div>

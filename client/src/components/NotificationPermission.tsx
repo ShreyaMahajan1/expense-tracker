@@ -87,7 +87,7 @@ const NotificationPermission: React.FC = () => {
   }
 
   return (
-    <div className="fixed top-2 sm:top-4 right-2 sm:right-4 left-2 sm:left-auto z-50 max-w-sm">
+    <div className="fixed top-4 sm:top-4 right-4 sm:right-4 left-4 sm:left-auto z-50 max-w-sm">
       <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl border border-gray-200 p-4 sm:p-6 animate-slide-in">
         <div className="flex items-start gap-3 sm:gap-4">
           <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
@@ -105,21 +105,21 @@ const NotificationPermission: React.FC = () => {
             <div className="flex flex-col gap-2">
               <button
                 onClick={handleEnableNotifications}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg sm:rounded-xl font-medium text-sm transition-colors"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 sm:py-2.5 px-3 sm:px-4 rounded-lg sm:rounded-xl font-medium text-sm transition-colors min-h-[44px] flex items-center justify-center"
               >
                 Enable Notifications
               </button>
               
-              <div className="flex gap-2">
+              <div className="flex gap-2 sm:gap-3">
                 <button
                   onClick={handleRemindLater}
-                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-2 sm:px-3 rounded-lg text-xs sm:text-sm font-medium transition-colors"
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 sm:py-2 px-3 sm:px-3 rounded-lg text-xs sm:text-sm font-medium transition-colors min-h-[44px] sm:min-h-[40px] flex items-center justify-center"
                 >
                   Remind Later
                 </button>
                 <button
                   onClick={handleDismiss}
-                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-2 sm:px-3 rounded-lg text-xs sm:text-sm font-medium transition-colors"
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 sm:py-2 px-3 sm:px-3 rounded-lg text-xs sm:text-sm font-medium transition-colors min-h-[44px] sm:min-h-[40px] flex items-center justify-center"
                 >
                   No Thanks
                 </button>

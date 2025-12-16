@@ -118,6 +118,27 @@ const Dashboard = () => {
         {/* Budget Alerts */}
         <BudgetAlert />
 
+        {/* Quick Navigation */}
+        <nav className="mb-6" aria-label="Quick actions">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+            <h2 className="text-sm font-semibold text-slate-900 mb-3">Quick Actions</h2>
+            <div className="flex flex-wrap gap-2">
+              <a href="/expenses" className="inline-flex items-center px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors">
+                📝 Add Expense
+              </a>
+              <a href="/income" className="inline-flex items-center px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-sm font-medium hover:bg-green-100 transition-colors">
+                💰 Add Income
+              </a>
+              <a href="/groups" className="inline-flex items-center px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-100 transition-colors">
+                👥 Manage Groups
+              </a>
+              <a href="/budget" className="inline-flex items-center px-3 py-1.5 bg-orange-50 text-orange-700 rounded-lg text-sm font-medium hover:bg-orange-100 transition-colors">
+                🎯 Set Budget
+              </a>
+            </div>
+          </div>
+        </nav>
+
         {/* Top Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow duration-200">

@@ -3,6 +3,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './styles/toast.css';
 import { AuthProvider } from './context/AuthContext';
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -22,9 +23,10 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/" element={<PrivateRoute><Dashboard /><UpiReminder /><NotificationPermission /></PrivateRoute>} />
+          <Route path="/dashboard" element={<PrivateRoute><Dashboard /><UpiReminder /><NotificationPermission /></PrivateRoute>} />
           <Route path="/expenses" element={<PrivateRoute><Expenses /><UpiReminder /><NotificationPermission /></PrivateRoute>} />
           <Route path="/income" element={<PrivateRoute><Income /><UpiReminder /><NotificationPermission /></PrivateRoute>} />
           <Route path="/budget" element={<PrivateRoute><Budget /><UpiReminder /><NotificationPermission /></PrivateRoute>} />

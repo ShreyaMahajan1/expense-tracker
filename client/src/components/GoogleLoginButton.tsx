@@ -26,7 +26,7 @@ const GoogleLoginButton: React.FC<GoogleLoginButtonProps> = ({ onError }) => {
       // Send to our backend for verification and user creation
       await loginWithFirebase(idToken);
       
-      navigate('/');
+      navigate('/dashboard');
     } catch (error: any) {
       
       let errorMessage = 'Google login failed';

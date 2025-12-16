@@ -11,19 +11,19 @@ const defaultOptions: ToastOptions = {
 };
 
 export const showSuccess = (message: string, options?: ToastOptions) => {
-  toast.success(message, { ...defaultOptions, ...options });
+  toast.success(`✅ ${message}`, { ...defaultOptions, ...options });
 };
 
 export const showError = (message: string, options?: ToastOptions) => {
-  toast.error(message, { ...defaultOptions, ...options });
+  toast.error(`❌ ${message}`, { ...defaultOptions, ...options });
 };
 
 export const showWarning = (message: string, options?: ToastOptions) => {
-  toast.warning(message, { ...defaultOptions, ...options });
+  toast.warning(`⚠️ ${message}`, { ...defaultOptions, ...options });
 };
 
 export const showInfo = (message: string, options?: ToastOptions) => {
-  toast.info(message, { ...defaultOptions, ...options });
+  toast.info(`ℹ️ ${message}`, { ...defaultOptions, ...options });
 };
 
 // For backward compatibility with existing code

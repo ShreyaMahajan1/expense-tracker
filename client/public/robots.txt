@@ -1,14 +1,12 @@
-# Allow all crawlers
 User-agent: *
 Allow: /
-
-# Disallow private pages
+Allow: /login
+Allow: /register
 Disallow: /api/
-Disallow: /profile
-Disallow: /expenses
-Disallow: /income
-Disallow: /budget
-Disallow: /groups
+Disallow: /admin/
 
 # Sitemap
-Sitemap: https://yourapp.com/sitemap.xml
+Sitemap: https://expense-tracker-one-ivory-25.vercel.app/sitemap.xml
+
+# Crawl delay
+Crawl-delay: 1
