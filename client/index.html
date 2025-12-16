@@ -2,30 +2,43 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Favicon and Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.svg" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Viewport -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     
     <!-- Primary Meta Tags -->
-    <title>Smart Expense Tracker - Track, Split & Manage Expenses</title>
-    <meta name="title" content="Smart Expense Tracker - Track, Split & Manage Expenses" />
-    <meta name="description" content="Free expense tracking app with group bill splitting, budget management, income tracking, and UPI payments. Perfect for roommates, friends, and personal finance." />
-    <meta name="keywords" content="expense tracker, bill splitting, budget app, money management, UPI payment, group expenses, personal finance, splitwise alternative" />
-    <meta name="author" content="Smart Expense Tracker" />
+    <title>MoneyFlow - Expense Tracker & Bill Splitter</title>
+    <meta name="title" content="MoneyFlow - Expense Tracker & Bill Splitter" />
+    <meta name="description" content="Track expenses, split bills with friends, manage budgets, and make UPI payments. The smart way to manage your money." />
+    <meta name="keywords" content="MoneyFlow, expense tracker, bill splitting, budget app, money management, UPI payment, group expenses, personal finance" />
+    <meta name="author" content="MoneyFlow" />
     <meta name="robots" content="index, follow" />
+    
+    <!-- PWA Theme Colors -->
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="MoneyFlow" />
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://yourapp.com/" />
-    <meta property="og:title" content="Smart Expense Tracker - Track, Split & Manage Expenses" />
-    <meta property="og:description" content="Free expense tracking app with group bill splitting, budget management, and UPI payments." />
-    <meta property="og:image" content="https://yourapp.com/og-image.jpg" />
+    <meta property="og:url" content="https://expense-tracker-one-ivory-25.vercel.app/" />
+    <meta property="og:title" content="MoneyFlow - Expense Tracker & Bill Splitter" />
+    <meta property="og:description" content="Track expenses, split bills with friends, and manage your money smartly." />
+    <meta property="og:image" content="https://expense-tracker-one-ivory-25.vercel.app/icon-512.png" />
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="https://yourapp.com/" />
-    <meta property="twitter:title" content="Smart Expense Tracker - Track, Split & Manage Expenses" />
-    <meta property="twitter:description" content="Free expense tracking app with group bill splitting, budget management, and UPI payments." />
-    <meta property="twitter:image" content="https://yourapp.com/twitter-image.jpg" />
+    <meta property="twitter:url" content="https://expense-tracker-one-ivory-25.vercel.app/" />
+    <meta property="twitter:title" content="MoneyFlow - Expense Tracker & Bill Splitter" />
+    <meta property="twitter:description" content="Track expenses, split bills with friends, and manage your money smartly." />
+    <meta property="twitter:image" content="https://expense-tracker-one-ivory-25.vercel.app/icon-512.png" />
     
     <!-- Security Headers -->
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
@@ -39,21 +52,22 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     
     <!-- Canonical URL -->
-    <link rel="canonical" href="https://yourapp.com/" />
+    <link rel="canonical" href="https://expense-tracker-one-ivory-25.vercel.app/" />
     
     <!-- Structured Data (JSON-LD) -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "WebApplication",
-      "name": "Smart Expense Tracker",
-      "description": "Track expenses, split bills, manage budgets, and make UPI payments",
+      "name": "MoneyFlow",
+      "description": "Track expenses, split bills with friends, manage budgets, and make UPI payments",
+      "url": "https://expense-tracker-one-ivory-25.vercel.app/",
       "applicationCategory": "FinanceApplication",
       "operatingSystem": "Web, iOS, Android",
       "offers": {
         "@type": "Offer",
         "price": "0",
-        "priceCurrency": "USD"
+        "priceCurrency": "INR"
       },
       "featureList": [
         "Expense Tracking",
@@ -62,6 +76,8 @@
         "Income Tracking",
         "UPI Payments",
         "Group Expenses",
+        "Receipt Scanning",
+        "Real-time Notifications",
         "Analytics Dashboard"
       ]
     }

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create MoneyFlow Icons</title>
+</head>
+<body>
+    <h2>MoneyFlow Icon Generator</h2>
+    <p>Right-click each canvas and "Save image as..." with the correct filename:</p>
+    
+    <div style="margin: 20px 0;">
+        <h3>favicon.ico (16x16)</h3>
+        <canvas id="favicon" width="16" height="16" style="border: 1px solid #ccc; image-rendering: pixelated; width: 64px; height: 64px;"></canvas>
+        <button onclick="downloadCanvas('favicon', 'favicon.png')">Download as PNG</button>
+    </div>
+    
+    <div style="margin: 20px 0;">
+        <h3>icon-192.png (192x192)</h3>
+        <canvas id="icon192" width="192" height="192" style="border: 1px solid #ccc; max-width: 200px;"></canvas>
+        <button onclick="downloadCanvas('icon192', 'icon-192.png')">Download</button>
+    </div>
+    
+    <div style="margin: 20px 0;">
+        <h3>icon-512.png (512x512)</h3>
+        <canvas id="icon512" width="512" height="512" style="border: 1px solid #ccc; max-width: 200px;"></canvas>
+        <button onclick="downloadCanvas('icon512', 'icon-512.png')">Download</button>
+    </div>
+    
+    <div style="margin: 20px 0;">
+        <h3>apple-touch-icon.png (180x180)</h3>
+        <canvas id="apple" width="180" height="180" style="border: 1px solid #ccc; max-width: 200px;"></canvas>
+        <button onclick="downloadCanvas('apple', 'apple-touch-icon.png')">Download</button>
+    </div>
+
+    <script>
+        function drawIcon(canvasId, size) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, size, size);
+            
+            // Background
+            ctx.fillStyle = '#2563eb';
+            ctx.fillRect(0, 0, size, size);
+            
+            // Dollar sign
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `bold ${size * 0.6}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('$', size / 2, size / 2);
+        }
+        
+        // Draw all icons
+        drawIcon('favicon', 16);
+        drawIcon('icon192', 192);
+        drawIcon('icon512', 512);
+        drawIcon('apple', 180);
+        
+        function downloadCanvas(canvasId, filename) {
+            const canvas = document.getElementById(canvasId);
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+        
+        // Auto-generate and replace files
+        setTimeout(() => {
+            console.log('Icons ready for download!');
+        }, 1000);
+    </script>
+</body>
+</html>
